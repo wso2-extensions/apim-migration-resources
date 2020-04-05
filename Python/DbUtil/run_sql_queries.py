@@ -2,6 +2,7 @@ import mysql.connector as mdb
 import mysql.connector
 from properties import *
 import jaydebeapi
+import re
 
 
 def run_sql_file(filename, db_name):
@@ -63,12 +64,15 @@ def run_sql_file(filename, db_name):
 
 def createTables():
     """Call to each database to execute the run command to create database tables"""
-
     if DB_TYPE == 'mysql':
-        run_sql_file('%s/wso2am-%s/dbscripts/mysql5.7.sql' % (APIM_HOME_PATH, OLD_VERSION), REG_DB)
-        run_sql_file('%s/wso2am-%s/dbscripts/mysql5.7.sql' % (APIM_HOME_PATH, OLD_VERSION), USER_DB)
-        run_sql_file('%s/wso2am-%s/dbscripts/apimgt/mysql5.7.sql' % (APIM_HOME_PATH, OLD_VERSION), AM_DB)
-
+        if (re.match("[3].[0-9].[0-9]", OLD_VERSION)):
+            run_sql_file('%s/wso2am-%s/dbscripts/mysql.sql' % (APIM_HOME_PATH, OLD_VERSION), REG_DB)
+            run_sql_file('%s/wso2am-%s/dbscripts/mysql.sql' % (APIM_HOME_PATH, OLD_VERSION), USER_DB)
+            run_sql_file('%s/wso2am-%s/dbscripts/apimgt/mysql.sql' % (APIM_HOME_PATH, OLD_VERSION), AM_DB)
+        else:
+            run_sql_file('%s/wso2am-%s/dbscripts/mysql5.7.sql' % (APIM_HOME_PATH, OLD_VERSION), REG_DB)
+            run_sql_file('%s/wso2am-%s/dbscripts/mysql5.7.sql' % (APIM_HOME_PATH, OLD_VERSION), USER_DB)
+            run_sql_file('%s/wso2am-%s/dbscripts/apimgt/mysql5.7.sql' % (APIM_HOME_PATH, OLD_VERSION), AM_DB)
     elif DB_TYPE == 'oracle':
         run_sql_file('%s/wso2am-%s/dbscripts/oracle.sql' % (APIM_HOME_PATH, OLD_VERSION), SID)
         run_sql_file('%s/wso2am-%s/dbscripts/apimgt/oracle.sql' % (APIM_HOME_PATH, OLD_VERSION), SID)
@@ -82,7 +86,6 @@ def createTables():
         run_sql_file('%s/wso2am-%s/dbscripts/apimgt/postgresql.sql' % (APIM_HOME_PATH, OLD_VERSION), AM_DB)
     else:
         print("Database provided is not valid when table creation!!!")
-
 
 def upgradeDBs():
     """Upgrade am database with new configurations of tables"""
@@ -133,3 +136,8 @@ def confRegDB():
 
     else:
         print("Database provided is not valid when table creation!!!")
+
+def disable_registry_version():
+    """Upgrade registry database with new configurations of tables"""
+    run_sql_file('../data/disable_registry_versioning/%s.sql' %  DB_TYPE,
+                REG_DB)

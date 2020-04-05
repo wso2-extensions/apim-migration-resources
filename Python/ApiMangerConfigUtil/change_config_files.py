@@ -36,3 +36,9 @@ def reindex_artifacts(filename):
     solr = '%s/wso2am-%s/solr' % (APIM_HOME_PATH, NEW_VERSION)
     if os.path.isdir(solr):
         shutil.rmtree(solr)
+
+def reindex_artifacts():
+    # Remove if there any solr directory created
+    solr = '%s/wso2am-%s/solr' % (APIM_HOME_PATH, NEW_VERSION)
+    if os.path.isdir(solr):
+        shutil.rmtree(solr)
