@@ -91,8 +91,8 @@ public class MigrateFrom210 extends MigrationClientBase implements MigrationClie
         log.info("Rxt migration for API Manager started.");
 
         String rxtName = "api.rxt";
-        String rxtDir = CarbonUtils.getCarbonHome() + File.separator + "migration-scripts" + File.separator +
-                "260-300-migration" + File.separator + "rxts" + File.separator + rxtName;
+        String rxtDir = CarbonUtils.getCarbonHome() + File.separator + "migration-resources" + File.separator + "rxts"
+                + File.separator + rxtName;
 
 
         for (Tenant tenant : getTenantsArray()) {
