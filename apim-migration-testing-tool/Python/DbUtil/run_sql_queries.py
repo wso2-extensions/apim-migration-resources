@@ -34,10 +34,9 @@ def run_sql_file(filename, db_name):
                                               [USER_NAME, PWD],
                                               "../data/dbconnectors/mysql/mysql-connector-java-8.0.13.jar")
                 elif DB_TYPE == 'oracle':
-                    conn = jaydebeapi.connect("oracle.jdbc.driver.OracleDriver",
-                                              'jdbc:oracle:thin:%s@%s:%d/%s' % (USER_NAME, HOST, PORT, SID),
-                                              [USER_NAME, PWD],
-                                              "../data/dbconnectors/oracle/ojdbc7.jar")
+                    conn = jaydebeapi.connect("oracle.jdbc.OracleDriver",
+                                              'jdbc:oracle:thin:@%s:%d/%s' % (HOST, PORT, SID),[USER_NAME, PWD],
+                                              "../data/dbconnectors/oracle/ojdbc8.jar")
                 elif DB_TYPE == 'mssql':
                     conn = jaydebeapi.connect("com.microsoft.sqlserver.jdbc.SQLServerDriver",
                                               'jdbc:sqlserver://%s:%d;databaseName=%s;SendStringParametersAsUnicode=false' % (

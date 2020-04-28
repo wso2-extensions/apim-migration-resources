@@ -108,7 +108,7 @@ def conf_deployment_toml(version):
 
     elif DB_TYPE == "oracle":
         copyfile(template_file, toml_file)
-        urls = ['url = \"jdbc:oracle:thin:@%S:%d/%s\"' % (HOST, PORT, SID)]
+        urls = ['url = \"jdbc:oracle:thin:@%s:%d/%s\"' % (HOST, PORT, SID)]
         default_url = ['url = \""jdbc:oracle:thin:@localhost:1521/sid\"']
 
     elif DB_TYPE == "postgresql":

@@ -13,18 +13,18 @@ password = "admin"
 create_admin_account = true
 
 [user_store]
-type = "database_unique_id"
+type = "database"
 
 [apim.devportal]
 display_multiple_versions = true
 
 [database.apim_db]
-type = "mysql"
-url = "jdbc:oracle:thin:@localhost:1521/sid"
-username = "root"
-password = "root"
+type = "oracle"
+url = "jdbc:oracle:thin:@localhost:1521/ORCLCDB.LOCALDOMAIN"
+username = "shared_db"
+password = "shared_db"
 defaultAutoCommit = "false"
-driverClassName = "oracle.jdbc.driver.OracleDriver"
+driverClassName = "oracle.jdbc.OracleDriver"
 maxActive = "50"
 maxWait = "60000"
 testOnBorrow = "true"
@@ -32,12 +32,12 @@ validationQuery = "SELECT 1 FROM DUAL"
 validationInterval = "30000"
 
 [database.shared_db]
-type = "mysql"
-url = "jdbc:oracle:thin:@localhost:1521/sid"
-username = "root"
-password = "root"
+type = "oracle"
+url = "jdbc:oracle:thin:@localhost:1521/ORCLCDB.LOCALDOMAIN"
+username = "shared_db"
+password = "shared_db"
 defaultAutoCommit = "false"
-driverClassName = "oracle.jdbc.driver.OracleDriver"
+driverClassName = "oracle.jdbc.OracleDriver"
 maxActive = "50"
 maxWait = "60000"
 testOnBorrow = "true"
@@ -45,12 +45,12 @@ validationQuery = "SELECT 1 FROM DUAL"
 validationInterval = "30000"
 
 [database.user]
-type = "mysql"
-url = "jdbc:oracle:thin:@localhost:1521/sid"
-username = "root"
-password = "root"
+type = "oracle"
+url = "jdbc:oracle:thin:@localhost:1521/ORCLCDB.LOCALDOMAIN"
+username = "shared_db"
+password = "shared_db"
 defaultAutoCommit = "false"
-driverClassName = "oracle.jdbc.driver.OracleDriver"
+driverClassName = "oracle.jdbc.OracleDriver"
 maxActive = "50"
 maxWait = "60000"
 testOnBorrow = "true"
