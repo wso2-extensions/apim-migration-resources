@@ -65,6 +65,12 @@ public class RegistryServiceImpl implements RegistryService {
             PrivilegedCarbonContext.startTenantFlow();
             PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(tenant.getDomain(), true);
             PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantId(tenant.getId(), true);
+            try {
+                APIUtil.loadTenantRegistry(tenant.getId());
+            } catch (RegistryException e) {
+                log.error("Could not load tenant registry for tenant " + tenant.getId() + '('
+                        + tenant.getDomain() + ')', e);
+            }
             this.tenant = tenant;
         }
     }

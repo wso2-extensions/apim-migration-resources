@@ -24,6 +24,7 @@ import org.wso2.carbon.apimgt.migration.client.MigrateFrom210;
 import org.wso2.carbon.apimgt.migration.client.MigrationClient;
 import org.wso2.carbon.apimgt.migration.client.MigrationClientFactory;
 import org.wso2.carbon.apimgt.migration.client.MigrationExecutor;
+import org.wso2.carbon.apimgt.migration.client.ScopeRoleMappingPopulationClient;
 import org.wso2.carbon.apimgt.migration.client.internal.ServiceHolder;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationClient;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationConstants;
@@ -31,6 +32,7 @@ import org.wso2.carbon.apimgt.migration.client.sp_migration.DBManager;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.DBManagerImpl;
 import org.wso2.carbon.apimgt.migration.util.Constants;
 import org.wso2.carbon.apimgt.migration.util.RegistryServiceImpl;
+import org.wso2.carbon.apimgt.migration.util.SharedDBUtil;
 import org.wso2.carbon.core.ServerStartupObserver;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.tenant.TenantManager;
@@ -54,6 +56,7 @@ public class APIMMigrationService implements ServerStartupObserver {
     public void completedServerStartup() {
         try {
             APIMgtDBUtil.initialize();
+            SharedDBUtil.initialize();
         } catch (Exception e) {
             //APIMgtDBUtil.initialize() throws generic exception
             log.error("Error occurred while initializing DB Util ", e);
@@ -78,6 +81,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 System.getProperty(Constants.ARG_REMOVE_DECRYPTION_FAILED_CONSUMER_KEYS_FROM_DB));
         boolean isSPMigration = Boolean.parseBoolean(System.getProperty(APIMStatMigrationConstants.ARG_MIGRATE_SP));
         boolean isSP_APP_Population = Boolean.parseBoolean(System.getProperty(Constants.ARG_POPULATE_SPAPP));
+        boolean isScopeRoleMappingPopulation = Boolean.parseBoolean(System.getProperty(Constants.ARG_POPULATE_SCOPE_ROLE_MAPPING));
 
         try {
             RegistryServiceImpl registryService = new RegistryServiceImpl();
@@ -100,11 +104,23 @@ public class APIMMigrationService implements ServerStartupObserver {
                 MigrationClient migrateFrom200 = new MigrateFrom200(tenants, blackListTenants, tenantRange, registryService, tenantManager);
                 log.info("Migrating WSO2 API Manager registry resources");
                 migrateFrom200.registryResourceMigration();
+
+                MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
+                log.info("Populating WSO2 API Manager Scope-Role Mapping");
+                scopeRoleMappingPopulation.populateScopeRoleMapping();
             } else if (V210.equals(migrateFromVersion) || V220.equals(migrateFromVersion) ||
                     V250.equals(migrateFromVersion) || V260.equals(migrateFromVersion)) {
                 MigrationClient migrateFrom210 = new MigrateFrom210(tenants, blackListTenants, tenantRange, registryService, tenantManager);
                 log.info("Migrating WSO2 API Manager registry resources");
                 migrateFrom210.registryResourceMigration();
+
+                MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
+                log.info("Populating WSO2 API Manager Scope-Role Mapping");
+                scopeRoleMappingPopulation.populateScopeRoleMapping();
+            } else if (isScopeRoleMappingPopulation) {
+                MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
+                log.info("Populating WSO2 API Manager Scope-Role Mapping");
+                scopeRoleMappingPopulation.populateScopeRoleMapping();
             } else {
                 MigrationClientFactory.initFactory(tenants, blackListTenants, tenantRange, registryService, tenantManager,
                         removeDecryptionFailedKeysFromDB);
