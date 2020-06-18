@@ -410,7 +410,7 @@ public class MigrateFrom18to19 extends MigrationClientBase implements MigrationC
                 registryService.startTenantFlow(tenant);
 
                 GenericArtifact[] artifacts = registryService.getGenericAPIArtifacts();
-                updateSwaggerResources(artifacts, tenant);
+                // updateSwaggerResources(artifacts, tenant);
             } catch (Exception e) {
                 // If any exception happen during a tenant data migration, we continue the other tenants
                 log.error("Unable to migrate the swagger resources of tenant : " + tenant.getDomain());
@@ -426,72 +426,72 @@ public class MigrateFrom18to19 extends MigrationClientBase implements MigrationC
         log.info("Swagger resource migration done for all the tenants.");
     }
 
-    private void updateSwaggerResources(GenericArtifact[] artifacts, Tenant tenant) throws APIMigrationException {
-        log.debug("Calling updateSwaggerResources");
-
-        APIDefinitionFromOpenAPISpec definitionFromSwagger20 = new APIDefinitionFromOpenAPISpec();
-        for (GenericArtifact artifact : artifacts) {
-            API api = registryService.getAPI(artifact);
-
-            if (api != null) {
-                APIIdentifier apiIdentifier = api.getId();
-                String apiName = apiIdentifier.getApiName();
-                String apiVersion = apiIdentifier.getVersion();
-                String apiProviderName = apiIdentifier.getProviderName();
-                try {
-                    String swagger2Document;
-
-                    String swagger2location = ResourceUtil.getSwagger2ResourceLocation(apiName, apiVersion,
-                                                                                       apiProviderName);
-                    String swagger12location = ResourceUtil.getSwagger12ResourceLocation(apiName,
-                                                                                         apiVersion,
-                                                                                         apiProviderName);
-
-                    if (!registryService.isGovernanceRegistryResourceExists(swagger12location)) {
-                        if (log.isDebugEnabled()) {
-                            log.debug("Creating swagger v2.0 resource from scratch for : " + apiName + '-' + apiVersion +
-                                      '-' + apiProviderName);
-                        }
-                        swagger2Document = definitionFromSwagger20.generateAPIDefinition(api);
-                    } else {
-                        if (log.isDebugEnabled()) {
-                            log.debug("Creating swagger v2.0 resource using v1.2 for : " + apiName + '-' + apiVersion +
-                                      '-' + apiProviderName);
-                        }
-                        swagger2Document = getSwagger2docUsingSwagger12RegistryResources(tenant, swagger12location,
-                                                                                         api);
-                    }
-
-                    registryService.addGovernanceRegistryResource(swagger2location, swagger2Document,
-                                                                  "application/json");
-                    registryService.setGovernanceRegistryResourcePermissions(apiProviderName, null, null,
-                                                                             swagger2location);
-                } catch (RegistryException e) {
-                    log.error("Registry error encountered for api " + apiName + '-' + apiVersion + '-' +
-                              apiProviderName + " of tenant " + tenant.getId() + '(' + tenant.getDomain() + ')', e);
-                } catch (ParseException e) {
-                    log.error("Error occurred while parsing swagger v1.2 document for api " + apiName + '-' +
-                              apiVersion + '-' + apiProviderName + " of tenant " + tenant.getId() + '(' + tenant
-                                      .getDomain() + ')', e);
-                } catch (UserStoreException e) {
-                    log.error("Error occurred while setting permissions of swagger v2.0 document for api " + apiName
-                              + '-' + apiVersion + '-' + apiProviderName + " of tenant " + tenant.getId() + '(' +
-                              tenant.getDomain() + ')', e);
-                } catch (MalformedURLException e) {
-                    log.error("Error occurred while creating swagger v2.0 document for api " + apiName + '-' +
-                              apiVersion + '-' + apiProviderName + " of tenant " + tenant.getId() + '(' + tenant
-                                      .getDomain() + ')', e);
-                } catch (APIManagementException e) {
-                    log.error("Error occurred while creating swagger v2.0 document for api " + apiName + '-' +
-                              apiVersion + '-' + apiProviderName + " of tenant " + tenant.getId() + '(' + tenant
-                                      .getDomain() + ')', e);
-                } catch (Exception e) {
-                    log.error("Error occurred while creating swagger doc for api " + apiName + '-' + apiVersion + '-'
-                              + apiProviderName + " of tenant " + tenant.getId() + '(' + tenant.getDomain() + ')', e);
-                }
-            }
-        }
-    }
+//    private void updateSwaggerResources(GenericArtifact[] artifacts, Tenant tenant) throws APIMigrationException {
+//        log.debug("Calling updateSwaggerResources");
+//
+//        APIDefinitionFromOpenAPISpec definitionFromSwagger20 = new APIDefinitionFromOpenAPISpec();
+//        for (GenericArtifact artifact : artifacts) {
+//            API api = registryService.getAPI(artifact);
+//
+//            if (api != null) {
+//                APIIdentifier apiIdentifier = api.getId();
+//                String apiName = apiIdentifier.getApiName();
+//                String apiVersion = apiIdentifier.getVersion();
+//                String apiProviderName = apiIdentifier.getProviderName();
+//                try {
+//                    String swagger2Document;
+//
+//                    String swagger2location = ResourceUtil.getSwagger2ResourceLocation(apiName, apiVersion,
+//                                                                                       apiProviderName);
+//                    String swagger12location = ResourceUtil.getSwagger12ResourceLocation(apiName,
+//                                                                                         apiVersion,
+//                                                                                         apiProviderName);
+//
+//                    if (!registryService.isGovernanceRegistryResourceExists(swagger12location)) {
+//                        if (log.isDebugEnabled()) {
+//                            log.debug("Creating swagger v2.0 resource from scratch for : " + apiName + '-' + apiVersion +
+//                                      '-' + apiProviderName);
+//                        }
+//                        swagger2Document = definitionFromSwagger20.generateAPIDefinition(api);
+//                    } else {
+//                        if (log.isDebugEnabled()) {
+//                            log.debug("Creating swagger v2.0 resource using v1.2 for : " + apiName + '-' + apiVersion +
+//                                      '-' + apiProviderName);
+//                        }
+//                        swagger2Document = getSwagger2docUsingSwagger12RegistryResources(tenant, swagger12location,
+//                                                                                         api);
+//                    }
+//
+//                    registryService.addGovernanceRegistryResource(swagger2location, swagger2Document,
+//                                                                  "application/json");
+//                    registryService.setGovernanceRegistryResourcePermissions(apiProviderName, null, null,
+//                                                                             swagger2location);
+//                } catch (RegistryException e) {
+//                    log.error("Registry error encountered for api " + apiName + '-' + apiVersion + '-' +
+//                              apiProviderName + " of tenant " + tenant.getId() + '(' + tenant.getDomain() + ')', e);
+//                } catch (ParseException e) {
+//                    log.error("Error occurred while parsing swagger v1.2 document for api " + apiName + '-' +
+//                              apiVersion + '-' + apiProviderName + " of tenant " + tenant.getId() + '(' + tenant
+//                                      .getDomain() + ')', e);
+//                } catch (UserStoreException e) {
+//                    log.error("Error occurred while setting permissions of swagger v2.0 document for api " + apiName
+//                              + '-' + apiVersion + '-' + apiProviderName + " of tenant " + tenant.getId() + '(' +
+//                              tenant.getDomain() + ')', e);
+//                } catch (MalformedURLException e) {
+//                    log.error("Error occurred while creating swagger v2.0 document for api " + apiName + '-' +
+//                              apiVersion + '-' + apiProviderName + " of tenant " + tenant.getId() + '(' + tenant
+//                                      .getDomain() + ')', e);
+//                } catch (APIManagementException e) {
+//                    log.error("Error occurred while creating swagger v2.0 document for api " + apiName + '-' +
+//                              apiVersion + '-' + apiProviderName + " of tenant " + tenant.getId() + '(' + tenant
+//                                      .getDomain() + ')', e);
+//                } catch (Exception e) {
+//                    log.error("Error occurred while creating swagger doc for api " + apiName + '-' + apiVersion + '-'
+//                              + apiProviderName + " of tenant " + tenant.getId() + '(' + tenant.getDomain() + ')', e);
+//                }
+//            }
+//        }
+//    }
 
     /**
      * This method generates swagger v2 doc using swagger 1.2 doc
@@ -530,7 +530,11 @@ public class MigrateFrom18to19 extends MigrationClientBase implements MigrationC
             }
 
             JSONObject apiDef = (JSONObject) parser.parse(swaggerDocContent);
-            generateAPIDefinitionPaths(apiDefPaths, apiDef, pathName);
+            //generateAPIDefinitionPaths(apiDefPaths, apiDef, pathName);
+            //TODO: Uncomment this function and all the related functions after fixing the below error which occured
+            // when updating the carbon.apimgt.version.
+            //          symbol:   method generateAPIDefinition(org.wso2.carbon.apimgt.api.model.API)
+            //          [ERROR]   location: variable definitionFromSwagger20 of type org.wso2.carbon.apimgt.impl.definitions.APIDefinitionFromOpenAPISpec
         }
         JSONObject swagger2Doc = generateSwagger2Document(swagger12doc, apiDefPaths, api);
         return swagger2Doc.toJSONString();
@@ -1254,6 +1258,10 @@ public class MigrateFrom18to19 extends MigrationClientBase implements MigrationC
     public void populateSPAPPs() throws APIMigrationException {
         fixConsumerAppTable();
         updateMetaDataTable();
+    }
+
+    @Override
+    public void populateScopeRoleMapping() throws APIMigrationException {
     }
 
     /**
