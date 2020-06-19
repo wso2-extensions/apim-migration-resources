@@ -23,6 +23,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationException;
+import org.wso2.carbon.apimgt.migration.util.ApimDBUtil;
 import org.wso2.carbon.apimgt.migration.util.Constants;
 import org.wso2.carbon.apimgt.migration.util.StatDBUtil;
 
@@ -153,6 +154,7 @@ public final class MigrationExecutor {
         } else {
             //Only performs database migration
             if (arguments.isDBMigration) {
+                ApimDBUtil.initialize();
                 log.info("Migrating WSO2 API Manager databases");
                 migrationClient.databaseMigration();
             }
