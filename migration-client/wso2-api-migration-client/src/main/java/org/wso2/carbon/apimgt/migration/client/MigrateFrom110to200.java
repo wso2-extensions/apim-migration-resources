@@ -1046,6 +1046,10 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
     public void populateScopeRoleMapping() throws APIMigrationException {
     }
 
+    @Override
+    public void scopeMigration() throws APIMigrationException {
+    }
+
     /**
      * This method updates a policy name
      *

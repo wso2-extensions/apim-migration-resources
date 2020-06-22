@@ -85,6 +85,10 @@ public class MigrateFrom210 extends MigrationClientBase implements MigrationClie
     public void populateScopeRoleMapping() throws APIMigrationException {
     }
 
+    @Override
+    public void scopeMigration() throws APIMigrationException {
+    }
+
     /**
      * This method is used to migrate rxt
      * This adds one new attribute (overview_type) to the api rxt

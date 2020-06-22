@@ -838,4 +838,8 @@ public class MigrateFrom19to110 extends MigrationClientBase implements Migration
     @Override
     public void populateScopeRoleMapping() throws APIMigrationException {
     }
+
+    @Override
+    public void scopeMigration() throws APIMigrationException {
+    }
 }

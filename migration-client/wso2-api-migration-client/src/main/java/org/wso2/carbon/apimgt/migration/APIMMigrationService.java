@@ -19,12 +19,7 @@ package org.wso2.carbon.apimgt.migration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
-import org.wso2.carbon.apimgt.migration.client.MigrateFrom200;
-import org.wso2.carbon.apimgt.migration.client.MigrateFrom210;
-import org.wso2.carbon.apimgt.migration.client.MigrationClient;
-import org.wso2.carbon.apimgt.migration.client.MigrationClientFactory;
-import org.wso2.carbon.apimgt.migration.client.MigrationExecutor;
-import org.wso2.carbon.apimgt.migration.client.ScopeRoleMappingPopulationClient;
+import org.wso2.carbon.apimgt.migration.client.*;
 import org.wso2.carbon.apimgt.migration.client.internal.ServiceHolder;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationClient;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationConstants;
@@ -47,6 +42,7 @@ public class APIMMigrationService implements ServerStartupObserver {
     private final String V220 = "2.2.0";
     private final String V250 = "2.5.0";
     private final String V260 = "2.6.0";
+    private final String V310 = "3.1.0";
 
     @Override
     public void completingServerStartup() {
@@ -121,7 +117,13 @@ public class APIMMigrationService implements ServerStartupObserver {
                 MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
                 log.info("Populating WSO2 API Manager Scope-Role Mapping");
                 scopeRoleMappingPopulation.populateScopeRoleMapping();
-            } else {
+            }
+            else if(V310.equals(migrateFromVersion)){
+                MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
+                        tenantRange, registryService, tenantManager);
+                migrateFrom310.scopeMigration();
+            }
+            else {
                 MigrationClientFactory.initFactory(tenants, blackListTenants, tenantRange, registryService, tenantManager,
                         removeDecryptionFailedKeysFromDB);
 

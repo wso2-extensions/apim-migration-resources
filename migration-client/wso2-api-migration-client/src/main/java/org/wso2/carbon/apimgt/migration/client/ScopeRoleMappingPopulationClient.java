@@ -97,6 +97,10 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
         populateRoleMappingWithUserRoles();
     }
 
+    @Override
+    public void scopeMigration() throws APIMigrationException {
+    }
+
     /**
      * This method is used to update the scopes of the user roles which will be retrieved based on the
      * permissions assigned.
