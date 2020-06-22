@@ -106,6 +106,13 @@ public class MigrateFrom310to320 extends MigrationClientBase implements Migratio
                 String userName = UserCoreUtil.removeDomainFromName(tenantAwareUsername);
                 ApimDBUtil.updateSPAppOwner(tenant.getId(), userName, userDomain);
             }
+
+            ArrayList<String> consumerKeys =  ApimDBUtil.getAppsOfTypeJWT(tenant.getId());
+            if (consumerKeys != null) {
+                for (String consumerKey : consumerKeys) {
+                    ApimDBUtil.updateTokenTypeToJWT(consumerKey);
+                }
+            }
         }
     }
 

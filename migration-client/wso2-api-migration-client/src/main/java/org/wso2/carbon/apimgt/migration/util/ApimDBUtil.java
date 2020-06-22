@@ -73,6 +73,34 @@ public class ApimDBUtil {
         return appNames;
     }
 
+    public static ArrayList<String> getAppsOfTypeJWT(int tenantId) {
+
+        ArrayList<String> consumerKeys = new ArrayList<String>();
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT IOP.CONSUMER_KEY\n" +
+                    "FROM AM_APPLICATION AMA \n" +
+                    "INNER JOIN AM_APPLICATION_KEY_MAPPING AKM ON AMA.APPLICATION_ID=AKM.APPLICATION_ID\n" +
+                    "INNER JOIN IDN_OIDC_PROPERTY IOP ON AKM.CONSUMER_KEY=IOP.CONSUMER_KEY\n" +
+                    "WHERE AMA.TOKEN_TYPE = 'JWT' AND PROPERTY_KEY  = 'tokenType' AND TENANT_ID = ?")){
+                preparedStatement.setInt(1, tenantId);
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    connection.commit();
+                    while (resultSet.next()) {
+                        consumerKeys.add(resultSet.getString("CONSUMER_KEY"));
+                    }
+                }
+            }
+
+        } catch (SQLException e) {
+            log.error("SQLException when executing: " + "SELECT APP_NAME\\n\" +\n" +
+                    "                    \"FROM IDN_OAUTH_CONSUMER_APPS OCA INNER JOIN AM_APPLICATION_KEY_MAPPING AKM ON\" +\n" +
+                    "                    \" OCA.CONSUMER_KEY=AKM.CONSUMER_KEY\\n\" +\n" +
+                    "                    \"WHERE TENANT_ID = ?", e);
+        }
+        return consumerKeys;
+    }
+
     public static void updateSPAppOwner(int tenantId, String username, String userDomain) {
 
         try (Connection connection = dataSource.getConnection()) {
@@ -83,6 +111,22 @@ public class ApimDBUtil {
                 preparedStatement.setString(1, username);
                 preparedStatement.setString(2, userDomain);
                 preparedStatement.setInt(3, tenantId);
+                preparedStatement.executeUpdate();
+            }
+
+        } catch (SQLException e) {
+            log.error("SQLException when executing: " + "", e);
+        }
+    }
+
+    public static void updateTokenTypeToJWT(String consumerKey) {
+
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE IDN_OIDC_PROPERTY SET" +
+                    " PROPERTY_VALUE = ? WHERE PROPERTY_KEY  = 'tokenType' AND CONSUMER_KEY = ?;")){
+                preparedStatement.setString(1, "JWT");
+                preparedStatement.setString(2, consumerKey);
                 preparedStatement.executeUpdate();
             }
 

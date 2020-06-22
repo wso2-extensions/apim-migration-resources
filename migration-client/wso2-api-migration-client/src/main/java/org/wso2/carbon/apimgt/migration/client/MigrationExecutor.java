@@ -154,7 +154,6 @@ public final class MigrationExecutor {
         } else {
             //Only performs database migration
             if (arguments.isDBMigration) {
-                ApimDBUtil.initialize();
                 log.info("Migrating WSO2 API Manager databases");
                 migrationClient.databaseMigration();
             }
@@ -175,6 +174,7 @@ public final class MigrationExecutor {
             }
             //only populate SP_APP table
             if (arguments.isSP_APP_Population) {
+                ApimDBUtil.initialize();
                 log.info("Populating SP_APP table");
                 migrationClient.populateSPAPPs();
             }
