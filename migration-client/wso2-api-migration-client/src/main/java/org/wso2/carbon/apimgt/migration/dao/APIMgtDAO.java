@@ -1,9 +1,28 @@
+/*
+ *  Copyright (c) 2020, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ *  WSO2 Inc. licenses this file to you under the Apache License,
+ *  Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.wso2.carbon.apimgt.migration.dao;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
+import org.wso2.carbon.apimgt.migration.dto.ResourceScopeInfoDTO;
 import org.wso2.carbon.apimgt.migration.dto.ResourceScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.dto.UserRoleFromPermissionDTO;
 import org.wso2.carbon.apimgt.migration.util.Constants;
@@ -18,6 +37,9 @@ import java.util.List;
 public class APIMgtDAO {
     private static final Log log = LogFactory.getLog(APIMgtDAO.class);
     private static APIMgtDAO INSTANCE = null;
+    private static final String RESOURCE_PATH = "RESOURCE_PATH";
+    private static final String SCOPE_ID = "SCOPE_ID";
+    private static final String TENANT_ID = "TENANT_ID";
     private static String GET_RESOURCE_SCOPE_SQL = "SELECT * FROM IDN_OAUTH2_RESOURCE_SCOPE WHERE TENANT_ID = ?";
     private static String INSERT_INTO_AM_API_RESOURCE_SCOPE_MAPPING =
             "INSERT INTO AM_API_RESOURCE_SCOPE_MAPPING VALUES " +
@@ -56,12 +78,20 @@ public class APIMgtDAO {
      * @return
      * @throws APIMigrationException
      */
-    public ResultSet getResourceScopeData(String tenantId) throws APIMigrationException {
+    public ArrayList<ResourceScopeInfoDTO> getResourceScopeData(String tenantId) throws APIMigrationException {
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(GET_RESOURCE_SCOPE_SQL)) {
                 ps.setString(1, tenantId);
                 try (ResultSet resultSet = ps.executeQuery()) {
-                    return resultSet;
+                    ArrayList<ResourceScopeInfoDTO> scopeInfoList = new ArrayList<>();
+                    while (resultSet.next()) {
+                        ResourceScopeInfoDTO scopeInfo = new ResourceScopeInfoDTO();
+                        scopeInfo.setResourcePath(resultSet.getString(RESOURCE_PATH));
+                        scopeInfo.setScopeId(resultSet.getString(SCOPE_ID));
+                        scopeInfo.setTenantID(resultSet.getString(TENANT_ID));
+                        scopeInfoList.add(scopeInfo);
+                    }
+                    return scopeInfoList;
                 }
             }
         } catch (SQLException ex) {

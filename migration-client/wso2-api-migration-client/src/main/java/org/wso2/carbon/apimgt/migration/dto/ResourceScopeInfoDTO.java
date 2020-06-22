@@ -18,12 +18,13 @@
 
 package org.wso2.carbon.apimgt.migration.dto;
 
-public class ResourceScopeMappingDTO {
+/**
+ * This class is used to store the scope info returned by the database
+ */
+public class ResourceScopeInfoDTO {
 
     private String scopeId;
-    private String apiId;
-    private String httpMethod;
-    private String urlPattern;
+    private String resourcePath;
     private String tenantID;
 
     public String getScopeId() {
@@ -34,20 +35,12 @@ public class ResourceScopeMappingDTO {
         this.scopeId = scopeId;
     }
 
-    public String getApiId() {
-        return apiId;
+    public String getResourcePath() {
+        return resourcePath;
     }
 
-    public void setApiId(String apiId) {
-        this.apiId = apiId;
-    }
-
-    public String getHttpMethod() {
-        return httpMethod;
-    }
-
-    public void setHttpMethod(String httpMethod) {
-        this.httpMethod = httpMethod;
+    public void setResourcePath(String resourcePath) {
+        this.resourcePath = resourcePath;
     }
 
     public String getTenantID() {
@@ -56,13 +49,5 @@ public class ResourceScopeMappingDTO {
 
     public void setTenantID(String tenantID) {
         this.tenantID = tenantID;
-    }
-
-    public String getUrlPattern() {
-        return urlPattern;
-    }
-
-    public void setUrlPattern(String urlPattern) {
-        this.urlPattern = urlPattern;
     }
 }
