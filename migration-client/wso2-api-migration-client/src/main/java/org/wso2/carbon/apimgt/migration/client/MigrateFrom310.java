@@ -3,14 +3,20 @@ package org.wso2.carbon.apimgt.migration.client;
 import io.swagger.models.apideclaration.Api;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationException;
 import org.wso2.carbon.apimgt.migration.dao.APIMgtDAO;
 import org.wso2.carbon.apimgt.migration.dto.ResourceScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.util.RegistryService;
 import org.wso2.carbon.user.api.Tenant;
+import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
+import org.wso2.carbon.user.api.UserStoreManager;
+import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.tenant.TenantManager;
+import org.wso2.carbon.user.core.util.UserCoreUtil;
+import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -27,6 +33,7 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
     private static final String SEPERATOR = "/";
     private static final String SPLITTER = ":";
     private static final String TENANT_IDENTIFIER = "t";
+    private static final String APPLICATION_ROLE_PREFIX = "Application/";
     private RegistryService registryService;
 
     public MigrateFrom310(String tenantArguments, String blackListTenantArguments, String tenantRange,
@@ -112,6 +119,46 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
             }
         } catch (SQLException ex) {
             log.error("Failed to Migrate Scopes", ex);
+        }
+    }
+
+    @Override
+    public void spMigration() throws APIMigrationException {
+
+        List<Tenant> tenantList = getTenantsArray();
+        // Iterate for each tenant. The reason we do this migration step wise for each tenant is so that, we do not
+        // overwhelm the amount of rows returned for each database call in systems with a large tenant count.
+        for (Tenant tenant : tenantList) {
+            ArrayList<String> appNames =  APIMgtDAO.getAppsByTenantId(tenant.getId());
+            if (appNames != null) {
+                for (String applicationName : appNames) {
+                    String applicationRole = APPLICATION_ROLE_PREFIX.concat(applicationName.trim());
+                    try {
+                        RealmService realmService = ServiceReferenceHolder.getInstance().getRealmService();
+                        UserRealm realm = realmService.getTenantUserRealm(tenant.getId());
+                        UserStoreManager manager = realm.getUserStoreManager();
+                        if (manager.isExistingUser(tenant.getAdminName())) {
+                            // Passing null for deleted scopes. The rest api properly handles this null value.
+                            manager.updateRoleListOfUser(tenant.getAdminName(), null,
+                                    new String[] {applicationRole} );
+                        }
+                    } catch (UserStoreException e) {
+                        log.error("Error in updating tenant admin user roles for application retrieval!", e);
+                    }
+                }
+                // We extract the tenant aware username and separate the domain.
+                String userDomain = UserCoreUtil.extractDomainFromName(tenant.getAdminName());
+                String tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(tenant.getAdminName());
+                String userName = UserCoreUtil.removeDomainFromName(tenantAwareUsername);
+                APIMgtDAO.updateSPAppOwner(tenant.getId(), userName, userDomain);
+            }
+
+            ArrayList<String> consumerKeys =  APIMgtDAO.getAppsOfTypeJWT(tenant.getId());
+            if (consumerKeys != null) {
+                for (String consumerKey : consumerKeys) {
+                    APIMgtDAO.updateTokenTypeToJWT(consumerKey);
+                }
+            }
         }
     }
 }

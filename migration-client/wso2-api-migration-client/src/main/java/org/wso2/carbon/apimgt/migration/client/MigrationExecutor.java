@@ -23,7 +23,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationException;
-import org.wso2.carbon.apimgt.migration.util.ApimDBUtil;
 import org.wso2.carbon.apimgt.migration.util.Constants;
 import org.wso2.carbon.apimgt.migration.util.StatDBUtil;
 
@@ -174,7 +173,6 @@ public final class MigrationExecutor {
             }
             //only populate SP_APP table
             if (arguments.isSP_APP_Population) {
-                ApimDBUtil.initialize();
                 log.info("Populating SP_APP table");
                 migrationClient.populateSPAPPs();
             }

@@ -39,8 +39,6 @@ public final class MigrationClientFactory {
         String[] version_1_10_x = new String[]{Constants.VERSION_1_10};
         String[] version_2_0_x = new String[]{Constants.VERSION_2_0_0};
         String[] version_2_1_x = new String[]{Constants.VERSION_2_1_0};
-        String[] version_3_1_x = new String[]{Constants.VERSION_3_1_0};
-        String[] version_3_2_x = new String[]{Constants.VERSION_3_2_0};
 
         MigrationClient migrateFrom18to19 = new MigrateFrom18to19(tenants, blackListTenants, tenantRange,
                 registryService, tenantManager);
@@ -56,9 +54,6 @@ public final class MigrationClientFactory {
         MigrationClient migrateFrom200to210 = new MigrateFrom200to210(tenants, blackListTenants,tenantRange,
                 registryService, tenantManager);
         registerClient(version_2_0_x, migrateFrom200to210, version_2_1_x);
-        MigrationClient migrateFrom310to320 = new MigrateFrom310to320(tenants, blackListTenants,tenantRange,
-                registryService, tenantManager);
-        registerClient(version_3_1_x, migrateFrom310to320, version_3_2_x);
     }
 
     public static void clearFactory() {
