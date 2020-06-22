@@ -98,4 +98,10 @@ public interface MigrationClient {
      * @throws APIMigrationException
      */
     void populateScopeRoleMapping() throws APIMigrationException;
+
+    /**
+     * This method is used to migrate the scopes of API's
+     * @throws APIMigrationException
+     */
+    void scopeMigration() throws APIMigrationException;
 }

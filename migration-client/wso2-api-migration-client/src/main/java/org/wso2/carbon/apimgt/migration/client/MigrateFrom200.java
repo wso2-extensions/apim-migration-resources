@@ -78,4 +78,8 @@ public class MigrateFrom200 extends MigrationClientBase implements MigrationClie
     @Override
     public void populateScopeRoleMapping() throws APIMigrationException {
     }
+
+    @Override
+    public void scopeMigration() throws APIMigrationException {
+    }
 }
