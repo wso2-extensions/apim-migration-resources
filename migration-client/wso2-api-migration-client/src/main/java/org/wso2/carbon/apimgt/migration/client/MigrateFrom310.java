@@ -142,21 +142,22 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
         // overwhelm the amount of rows returned for each database call in systems with a large tenant count.
         for (Tenant tenant : tenantList) {
             ArrayList<String> appNames =  APIMgtDAO.getAppsByTenantId(tenant.getId());
+            ArrayList<String> appRoleNames =  new ArrayList<>();
             if (appNames != null) {
                 for (String applicationName : appNames) {
-                    String applicationRole = APPLICATION_ROLE_PREFIX.concat(applicationName.trim());
-                    try {
-                        RealmService realmService = ServiceReferenceHolder.getInstance().getRealmService();
-                        UserRealm realm = realmService.getTenantUserRealm(tenant.getId());
-                        UserStoreManager manager = realm.getUserStoreManager();
-                        if (manager.isExistingUser(tenant.getAdminName())) {
-                            // Passing null for deleted scopes. The rest api properly handles this null value.
-                            manager.updateRoleListOfUser(tenant.getAdminName(), null,
-                                    new String[] {applicationRole} );
-                        }
-                    } catch (UserStoreException e) {
-                        log.error("Error in updating tenant admin user roles for application retrieval!", e);
+                    appRoleNames.add(APPLICATION_ROLE_PREFIX.concat(applicationName.trim()));
+                }
+                try {
+                    RealmService realmService = ServiceReferenceHolder.getInstance().getRealmService();
+                    UserRealm realm = realmService.getTenantUserRealm(tenant.getId());
+                    UserStoreManager manager = realm.getUserStoreManager();
+                    if (manager.isExistingUser(tenant.getAdminName())) {
+                        // Passing null for deleted scopes. The rest api properly handles this null value.
+                        manager.updateRoleListOfUser(tenant.getAdminName(), null,
+                                appRoleNames.toArray(new String[0]));
                     }
+                } catch (UserStoreException e) {
+                    log.error("Error in updating tenant admin user roles for application retrieval!", e);
                 }
                 // We extract the tenant aware username and separate the domain.
                 String userDomain = UserCoreUtil.extractDomainFromName(tenant.getAdminName());
