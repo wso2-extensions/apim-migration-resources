@@ -1050,6 +1050,10 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
     public void scopeMigration() throws APIMigrationException {
     }
 
+    @Override
+    public void spMigration() throws APIMigrationException {
+    }
+
     /**
      * This method updates a policy name
      *
