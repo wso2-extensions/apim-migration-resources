@@ -42,4 +42,8 @@ WHERE constraint_type = 'PRIMARY KEY' AND tc.table_name = 'am_application_key_ma
 EXECUTE con_name;
 END $$;
 
+ALTER TABLE AM_WORKFLOWS
+    ADD WF_METADATA BYTEA NULL,
+    ADD WF_PROPERTIES BYTEA NULL;
+
 
