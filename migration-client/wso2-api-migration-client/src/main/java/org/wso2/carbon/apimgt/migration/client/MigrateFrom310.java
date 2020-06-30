@@ -27,6 +27,12 @@ import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationExc
 import org.wso2.carbon.apimgt.migration.dao.APIMgtDAO;
 import org.wso2.carbon.apimgt.migration.dto.ResourceScopeInfoDTO;
 import org.wso2.carbon.apimgt.migration.dto.ResourceScopeMappingDTO;
+import org.wso2.carbon.apimgt.migration.dto.ScopeInfoDTO;
+import org.wso2.carbon.apimgt.migration.dto.APIURLMappingInfoDTO;
+import org.wso2.carbon.apimgt.migration.dto.APIInfoDTO;
+import org.wso2.carbon.apimgt.migration.dto.APIInfoScopeMappingDTO;
+import org.wso2.carbon.apimgt.migration.dto.APIScopeMappingDTO;
+import org.wso2.carbon.apimgt.migration.dto.AMAPIResourceScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.util.RegistryService;
 import org.wso2.carbon.user.api.Tenant;
 import org.wso2.carbon.user.api.UserRealm;
@@ -37,11 +43,11 @@ import org.wso2.carbon.user.core.tenant.TenantManager;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MigrateFrom310 extends MigrationClientBase implements MigrationClient {
 
@@ -98,39 +104,72 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
     public void scopeMigration() throws APIMigrationException {
         APIMgtDAO apiMgtDAO = APIMgtDAO.getInstance();
         for (Tenant tenant : getTenantsArray()) {
-            List<ResourceScopeMappingDTO> resourceScopeMappingDTOs = new ArrayList<>();
-            ArrayList<ResourceScopeInfoDTO> rsResourceScopeData = apiMgtDAO.getResourceScopeData(Integer.toString(tenant.getId()));
-            for (ResourceScopeInfoDTO scopeInfo : rsResourceScopeData) {
-                String resourcePath = scopeInfo.getResourcePath();
-                String scopeId = scopeInfo.getScopeId();
-                String tenantID = scopeInfo.getTenantID();
-                String[] resourcePathArray = resourcePath.split(SEPERATOR);
-                String[] splittedResPathArray = resourcePath.split(SPLITTER);
-                String context = null;
-                String urlPattern = null;
-                String urlPatternWithMethod = resourcePathArray[resourcePathArray.length - 1];
-                String[] urlPatternArray = urlPatternWithMethod.split(SPLITTER);
-                urlPattern = SEPERATOR + urlPatternArray[0];
-                String httpMethod = splittedResPathArray[1];
-                if (resourcePathArray[1].equals(TENANT_IDENTIFIER)) {
-                    context = SEPERATOR + resourcePathArray[1] + SEPERATOR + resourcePathArray[2] + SEPERATOR +
-                            resourcePathArray[3] + SEPERATOR + resourcePathArray[4];
-                } else {
-                    context = SEPERATOR + resourcePathArray[1] + SEPERATOR + resourcePathArray[2];
+            // Step 1: remove duplicate entries
+            ArrayList<APIScopeMappingDTO> duplicateList = new ArrayList<>();
+            ArrayList<APIScopeMappingDTO> scopeAMData = apiMgtDAO.getAMScopeData();
+            ArrayList<ResourceScopeInfoDTO> scopeResourceData = apiMgtDAO.getResourceScopeData(Integer.toString(tenant.getId()));
+            for (APIScopeMappingDTO scopeAMDataDTO : scopeAMData) {
+                int flag = 0;
+                for (ResourceScopeInfoDTO resourceScopeInfoDTO : scopeResourceData) {
+                    if (scopeAMDataDTO.getScopeId() == Integer.parseInt(resourceScopeInfoDTO.getScopeId())) {
+                        flag += 1;
+                    }
                 }
-                String apiId = APIMgtDAO.getInstance().getAPIID(context);
-                if (apiId != null && httpMethod != null && scopeId != null && urlPattern != null &&
-                        tenantID != null) {
-                    ResourceScopeMappingDTO resourceScopeMappingDTO = new ResourceScopeMappingDTO();
-                    resourceScopeMappingDTO.setApiId(apiId);
-                    resourceScopeMappingDTO.setHttpMethod(httpMethod);
-                    resourceScopeMappingDTO.setScopeId(scopeId);
-                    resourceScopeMappingDTO.setUrlPattern(urlPattern);
-                    resourceScopeMappingDTO.setTenantID(tenantID);
-                    resourceScopeMappingDTOs.add(resourceScopeMappingDTO);
+                if (flag == 0) {
+                    duplicateList.add(scopeAMDataDTO);
                 }
             }
-            apiMgtDAO.addDataToResourceScopeMapping(resourceScopeMappingDTOs);
+            apiMgtDAO.removeDuplicateScopeEntries(duplicateList);
+
+            // Step 2: Remove duplicate versioned scopes registered for versioned APIs
+            ArrayList<APIInfoScopeMappingDTO> apiInfoScopeMappingDTOS = apiMgtDAO.getAPIInfoScopeData();
+            Map<String, Integer> apiScopeToScopeIdMapping = new HashMap<>();
+            for (APIInfoScopeMappingDTO scopeInfoDTO : apiInfoScopeMappingDTOS) {
+                String apiScopeKey = scopeInfoDTO.getApiName() + ":" + scopeInfoDTO.getApiProvider() +
+                        ":" + scopeInfoDTO.getScopeName();
+                if (apiScopeToScopeIdMapping.containsKey(apiScopeKey)) {
+                    int scopeId = apiScopeToScopeIdMapping.get(apiScopeKey);
+                    if (scopeId != scopeInfoDTO.getScopeId()) {
+                        apiMgtDAO.updateScopeResource(scopeId, scopeInfoDTO.getResourcePath(), scopeInfoDTO.getScopeId());
+                        APIScopeMappingDTO apiScopeMappingDTO = new APIScopeMappingDTO();
+                        apiScopeMappingDTO.setApiId(scopeInfoDTO.getApiId());
+                        apiScopeMappingDTO.setScopeId(scopeInfoDTO.getScopeId());
+                        ArrayList<APIScopeMappingDTO> scopeRemovalList = new ArrayList<>();
+                        scopeRemovalList.add(apiScopeMappingDTO);
+                        apiMgtDAO.removeDuplicateScopeEntries(scopeRemovalList);
+                    }
+                } else {
+                    apiScopeToScopeIdMapping.put(apiScopeKey, scopeInfoDTO.getScopeId());
+                }
+            }
+
+            // Step 3: Move entries in IDN_RESORCE_SCOPE_MAPPING table to AM_API_RESOURCE_SCOPE_MAPPING table
+            ArrayList<APIInfoDTO> apiData = apiMgtDAO.getAPIData();
+            ArrayList<APIURLMappingInfoDTO> urlMappingData = apiMgtDAO.getAPIURLMappingData();
+            List<AMAPIResourceScopeMappingDTO> amapiResourceScopeMappingDTOList = new ArrayList<>();
+            for (APIInfoDTO apiInfoDTO : apiData) {
+                String context = apiInfoDTO.getApiContext();
+                String version = apiInfoDTO.getApiVersion();
+                for (APIURLMappingInfoDTO apiurlMappingInfoDTO : urlMappingData) {
+                    if (apiurlMappingInfoDTO.getApiId() == apiInfoDTO.getApiId()) {
+                        String resourcePath = context + "/" + version + apiurlMappingInfoDTO.getUrlPattern() + ":" +
+                                apiurlMappingInfoDTO.getHttpMethod();
+                        int urlMappingId = apiurlMappingInfoDTO.getUrlMappingId();
+                        int scopeId = apiMgtDAO.getScopeId(resourcePath);
+                        if (scopeId != -1) {
+                            ScopeInfoDTO scopeInfoDTO = apiMgtDAO.getScopeInfoByScopeId(scopeId);
+                            String scopeName = scopeInfoDTO.getScopeName();
+                            int tenantId = scopeInfoDTO.getTenantID();
+                            AMAPIResourceScopeMappingDTO amapiResourceScopeMappingDTO = new AMAPIResourceScopeMappingDTO();
+                            amapiResourceScopeMappingDTO.setScopeName(scopeName);
+                            amapiResourceScopeMappingDTO.setUrlMappingId(urlMappingId);
+                            amapiResourceScopeMappingDTO.setTenantId(tenantId);
+                            amapiResourceScopeMappingDTOList.add(amapiResourceScopeMappingDTO);
+                        }
+                    }
+                }
+            }
+            apiMgtDAO.addDataToResourceScopeMapping(amapiResourceScopeMappingDTOList);
         }
     }
 
