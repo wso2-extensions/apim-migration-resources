@@ -112,10 +112,10 @@ public class APIMgtDAO {
      * @return
      * @throws APIMigrationException
      */
-    public ArrayList<ResourceScopeInfoDTO> getResourceScopeData(String tenantId) throws APIMigrationException {
+    public ArrayList<ResourceScopeInfoDTO> getResourceScopeData(int tenantId) throws APIMigrationException {
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(GET_RESOURCE_SCOPE_SQL)) {
-                ps.setString(1, tenantId);
+                ps.setInt(1, tenantId);
                 try (ResultSet resultSet = ps.executeQuery()) {
                     ArrayList<ResourceScopeInfoDTO> scopeInfoList = new ArrayList<>();
                     while (resultSet.next()) {
