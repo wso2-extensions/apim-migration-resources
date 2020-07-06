@@ -64,7 +64,7 @@ public class SharedDAO {
              PreparedStatement ps = conn.prepareStatement(sqlQuery);) {
 
             ps.setString(1, permission);
-            ps.setString(2, Integer.toString(tenantId));
+            ps.setInt(2, tenantId);
 
             try (ResultSet resultSet = ps.executeQuery();) {
                 while (resultSet.next()) {
