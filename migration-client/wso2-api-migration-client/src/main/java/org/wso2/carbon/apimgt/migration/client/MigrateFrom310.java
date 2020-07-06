@@ -107,7 +107,7 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
             // Step 1: remove duplicate entries
             ArrayList<APIScopeMappingDTO> duplicateList = new ArrayList<>();
             ArrayList<APIScopeMappingDTO> scopeAMData = apiMgtDAO.getAMScopeData();
-            ArrayList<ResourceScopeInfoDTO> scopeResourceData = apiMgtDAO.getResourceScopeData(Integer.toString(tenant.getId()));
+            ArrayList<ResourceScopeInfoDTO> scopeResourceData = apiMgtDAO.getResourceScopeData(tenant.getId());
             for (APIScopeMappingDTO scopeAMDataDTO : scopeAMData) {
                 int flag = 0;
                 for (ResourceScopeInfoDTO resourceScopeInfoDTO : scopeResourceData) {
