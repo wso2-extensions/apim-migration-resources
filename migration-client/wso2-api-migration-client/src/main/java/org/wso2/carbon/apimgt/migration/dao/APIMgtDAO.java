@@ -59,7 +59,7 @@ public class APIMgtDAO {
     private static final String SCOPE_DESCRIPTION = "DESCRIPTION";
     private static final String SCOPE_TYPE = "SCOPE_TYPE";
     private static final String TENANT_ID = "TENANT_ID";
-    private static String GET_RESOURCE_SCOPE_SQL = "SELECT * FROM IDN_OAUTH2_RESOURCE_SCOPE WHERE TENANT_ID = ?";
+    private static String GET_RESOURCE_SCOPE_SQL = "SELECT * FROM IDN_OAUTH2_RESOURCE_SCOPE";
     private static String GET_AM_API_SQL = "SELECT * FROM AM_API";
     private static String GET_AM_API_URL_MAPPING_SQL = "SELECT * FROM AM_API_URL_MAPPING";
     private static String GET_API_INFO_SCOPE_SQL = "SELECT APIS.API_ID, APIS.SCOPE_ID, API.API_NAME, " +
@@ -108,14 +108,12 @@ public class APIMgtDAO {
 
     /**
      * This mehthod is used to get data from IDN_OAUTH2_RESOURCE_SCOPE by tenant id
-     * @param tenantId
      * @return
      * @throws APIMigrationException
      */
-    public ArrayList<ResourceScopeInfoDTO> getResourceScopeData(int tenantId) throws APIMigrationException {
+    public ArrayList<ResourceScopeInfoDTO> getResourceScopeData() throws APIMigrationException {
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(GET_RESOURCE_SCOPE_SQL)) {
-                ps.setInt(1, tenantId);
                 try (ResultSet resultSet = ps.executeQuery()) {
                     ArrayList<ResourceScopeInfoDTO> scopeInfoList = new ArrayList<>();
                     while (resultSet.next()) {
