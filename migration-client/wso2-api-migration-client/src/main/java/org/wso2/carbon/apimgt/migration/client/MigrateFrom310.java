@@ -215,10 +215,6 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
 
     @Override
     public void appGrantMigration() throws APIMigrationException {
-        try {
-            APIMgtDAO.updateGrantType();
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
+        APIMgtDAO.updateGrantType();
     }
 }

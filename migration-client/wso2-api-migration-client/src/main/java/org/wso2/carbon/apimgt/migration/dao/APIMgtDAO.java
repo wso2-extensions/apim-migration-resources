@@ -35,13 +35,14 @@ import org.wso2.carbon.apimgt.migration.dto.APIScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.dto.AMAPIResourceScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.util.Constants;
 
-import javax.sql.rowset.serial.SerialBlob;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class APIMgtDAO {
     private static final Log log = LogFactory.getLog(APIMgtDAO.class);
@@ -489,7 +490,7 @@ public class APIMgtDAO {
      * This method is used to update data to AM_APPLICATION_KEY_MAPPING table
      * @throws APIMigrationException
      */
-    public static void updateGrantType() throws APIMigrationException, ParseException {
+    public static void updateGrantType() throws APIMigrationException {
         ArrayList<String> consumerKeys = new ArrayList<String>();
         String consumerKey = null;
         String grantType = null;
