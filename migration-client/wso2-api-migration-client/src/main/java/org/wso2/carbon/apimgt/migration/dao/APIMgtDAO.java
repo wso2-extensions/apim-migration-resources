@@ -20,6 +20,9 @@ package org.wso2.carbon.apimgt.migration.dao;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.dto.ResourceScopeInfoDTO;
@@ -32,13 +35,14 @@ import org.wso2.carbon.apimgt.migration.dto.APIScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.dto.AMAPIResourceScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.util.Constants;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class APIMgtDAO {
     private static final Log log = LogFactory.getLog(APIMgtDAO.class);
@@ -95,6 +99,10 @@ public class APIMgtDAO {
             " SCOPE_ID = ?";
     private static String UPDATE_SCOPE_ID_IN_RESOURCE = "UPDATE" +
             " IDN_OAUTH2_RESOURCE_SCOPE SET SCOPE_ID = ? WHERE SCOPE_ID = ?";
+
+    private static String GET_CONSUMER_KEYS = "SELECT CONSUMER_KEY FROM AM_APPLICATION_KEY_MAPPING";
+    private static String GET_GRANT_TYPE = "SELECT GRANT_TYPES from IDN_OAUTH_CONSUMER_APPS where CONSUMER_KEY = ?";
+    private static String UPDATE_APP_INFO = "Update AM_APPLICATION_KEY_MAPPING set APP_INFO = ? where CONSUMER_KEY = ?";
 
     private APIMgtDAO() {
     }
@@ -475,6 +483,48 @@ public class APIMgtDAO {
 
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_TOKEN_TYPE_TO_JWT), e);
+        }
+    }
+
+    /**
+     * This method is used to update data to AM_APPLICATION_KEY_MAPPING table
+     * @throws APIMigrationException
+     */
+    public static void updateGrantType() throws APIMigrationException {
+        ArrayList<String> consumerKeys = new ArrayList<String>();
+        String consumerKey = null;
+        String grantType = null;
+        String grantJson = null;
+        try (Connection connection = APIMgtDBUtil.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement preparedStatement = connection.prepareStatement(GET_CONSUMER_KEYS)) {
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    connection.commit();
+                    while (resultSet.next()) {
+                        consumerKey = resultSet.getString("CONSUMER_KEY");
+                        try (PreparedStatement preparedStatement1 = connection.prepareStatement(GET_GRANT_TYPE)) {
+                            preparedStatement1.setString(1, consumerKey);
+                            try (ResultSet resultSet1 = preparedStatement1.executeQuery()) {
+                                connection.commit();
+                                while (resultSet1.next()) {
+                                    grantType = resultSet1.getString("GRANT_TYPES");
+                                    grantJson = "{\"parameters\":{\"grant_types\": \""+ grantType + "\"}}";
+                                    try (PreparedStatement preparedStatement2 =
+                                                 connection.prepareStatement(UPDATE_APP_INFO)) {
+                                        InputStream in = new ByteArrayInputStream(grantJson.getBytes());
+                                        preparedStatement2.
+                                                setBinaryStream(1, in, grantJson.getBytes().length);
+                                        preparedStatement2.setString(2, consumerKey);
+                                        preparedStatement2.executeUpdate();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(GET_CONSUMER_KEYS), e);
         }
     }
 }

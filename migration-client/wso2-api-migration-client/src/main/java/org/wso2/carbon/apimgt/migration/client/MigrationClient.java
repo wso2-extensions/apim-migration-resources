@@ -110,4 +110,10 @@ public interface MigrationClient {
      * @throws APIMigrationException
      */
     void spMigration() throws APIMigrationException;
+
+    /**
+     * This method is used to migrate grant types in Application
+     * @throws APIMigrationException
+     */
+    void appGrantMigration() throws APIMigrationException;
 }

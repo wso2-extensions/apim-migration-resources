@@ -21,6 +21,7 @@ package org.wso2.carbon.apimgt.migration.client;
 import io.swagger.models.apideclaration.Api;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.json.simple.parser.ParseException;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationException;
@@ -210,5 +211,10 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
                 }
             }
         }
+    }
+
+    @Override
+    public void appGrantMigration() throws APIMigrationException {
+        APIMgtDAO.updateGrantType();
     }
 }

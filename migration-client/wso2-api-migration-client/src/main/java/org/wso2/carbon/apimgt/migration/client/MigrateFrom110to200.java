@@ -1054,6 +1054,11 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
     public void spMigration() throws APIMigrationException {
     }
 
+    @Override
+    public void appGrantMigration() throws APIMigrationException {
+
+    }
+
     /**
      * This method updates a policy name
      *
