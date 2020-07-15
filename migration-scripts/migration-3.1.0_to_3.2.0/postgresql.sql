@@ -98,6 +98,15 @@ CREATE TABLE IF NOT EXISTS AM_SHARED_SCOPE (
      PRIMARY KEY (UUID)
 );
 
+DO $$ DECLARE con_name varchar(200);
+BEGIN SELECT 'ALTER TABLE IDN_OAUTH2_RESOURCE_SCOPE DROP CONSTRAINT ' || tc .constraint_name || ';' INTO con_name
+FROM information_schema.table_constraints AS tc
+JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
+JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
+WHERE constraint_type = 'PRIMARY KEY' AND tc.table_name = 'IDN_OAUTH2_RESOURCE_SCOPE';
+EXECUTE con_name;
+END $$;
+
 DROP TABLE IF EXISTS AM_TENANT_THEMES;
 CREATE TABLE IF NOT EXISTS AM_TENANT_THEMES (
   TENANT_ID INTEGER NOT NULL,
