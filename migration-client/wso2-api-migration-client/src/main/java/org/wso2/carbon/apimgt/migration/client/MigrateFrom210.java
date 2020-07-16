@@ -50,7 +50,6 @@ public class MigrateFrom210 extends MigrationClientBase implements MigrationClie
 
     @Override
     public void registryResourceMigration() throws APIMigrationException {
-        rxtMigration();
         updateGenericAPIArtifacts(registryService);
     }
 
@@ -96,44 +95,5 @@ public class MigrateFrom210 extends MigrationClientBase implements MigrationClie
     @Override
     public void appGrantMigration() throws APIMigrationException {
 
-    }
-
-    /**
-     * This method is used to migrate rxt
-     * This adds one new attribute (overview_type) to the api rxt
-     *
-     * @throws APIMigrationException
-     */
-    private void rxtMigration() throws APIMigrationException {
-        log.info("Rxt migration for API Manager started.");
-
-        String rxtName = "api.rxt";
-        String rxtDir = CarbonUtils.getCarbonHome() + File.separator + "migration-resources" + File.separator + "rxts"
-                + File.separator + rxtName;
-
-
-        for (Tenant tenant : getTenantsArray()) {
-            try {
-                registryService.startTenantFlow(tenant);
-
-                log.info("Updating api.rxt for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')');
-                //Update api.rxt file
-                String rxt = FileUtil.readFileToString(rxtDir);
-                registryService.updateRXTResource(rxtName, rxt);
-                log.info("End Updating api.rxt for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')');
-            } catch (IOException e) {
-                log.error("Error when reading api.rxt from " + rxtDir + " for tenant " + tenant.getId() + '(' + tenant
-                        .getDomain() + ')', e);
-            } catch (RegistryException e) {
-                    log.error("Error while updating api.rxt in the registry for tenant " + tenant.getId() + '('
-                            + tenant.getDomain() + ')', e);
-            } catch (UserStoreException e) {
-                log.error("Error while updating api.rxt in the registry for tenant " + tenant.getId() + '('
-                        + tenant.getDomain() + ')', e);
-            } finally {
-                registryService.endTenantFlow();
-            }
-        }
-        log.info("Rxt resource migration done for all the tenants");
     }
 }
