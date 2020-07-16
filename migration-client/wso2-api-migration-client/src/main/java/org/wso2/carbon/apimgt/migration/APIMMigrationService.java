@@ -118,20 +118,19 @@ public class APIMMigrationService implements ServerStartupObserver {
                         tenantRange, registryService, tenantManager);
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();
+                migrateFrom310.appGrantMigration();
                 log.info("Migrated Successfully to 3.2");
             } else if (isScopeRoleMappingPopulation) {
                 MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
                 log.info("Populating WSO2 API Manager Scope-Role Mapping");
                 scopeRoleMappingPopulation.populateScopeRoleMapping();
-            }
-            else if(V310.equals(migrateFromVersion)){
+            } else if(V310.equals(migrateFromVersion)){
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();
                 migrateFrom310.appGrantMigration();
-            }
-            else {
+            } else {
                 MigrationClientFactory.initFactory(tenants, blackListTenants, tenantRange, registryService, tenantManager,
                         removeDecryptionFailedKeysFromDB);
 
