@@ -842,13 +842,4 @@ public class MigrateFrom19to110 extends MigrationClientBase implements Migration
     @Override
     public void scopeMigration() throws APIMigrationException {
     }
-
-    @Override
-    public void spMigration() throws APIMigrationException {
-    }
-
-    @Override
-    public void appGrantMigration() throws APIMigrationException {
-
-    }
 }

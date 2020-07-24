@@ -117,8 +117,6 @@ public class APIMMigrationService implements ServerStartupObserver {
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
                 migrateFrom310.scopeMigration();
-                migrateFrom310.spMigration();
-                migrateFrom310.appGrantMigration();
                 log.info("Migrated Successfully to 3.2");
             } else if (isScopeRoleMappingPopulation) {
                 MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
@@ -128,8 +126,6 @@ public class APIMMigrationService implements ServerStartupObserver {
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
                 migrateFrom310.scopeMigration();
-                migrateFrom310.spMigration();
-                migrateFrom310.appGrantMigration();
             } else {
                 MigrationClientFactory.initFactory(tenants, blackListTenants, tenantRange, registryService, tenantManager,
                         removeDecryptionFailedKeysFromDB);

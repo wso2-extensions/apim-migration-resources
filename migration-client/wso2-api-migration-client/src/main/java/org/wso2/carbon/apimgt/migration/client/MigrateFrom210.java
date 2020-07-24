@@ -87,13 +87,4 @@ public class MigrateFrom210 extends MigrationClientBase implements MigrationClie
     @Override
     public void scopeMigration() throws APIMigrationException {
     }
-
-    @Override
-    public void spMigration() throws APIMigrationException {
-    }
-
-    @Override
-    public void appGrantMigration() throws APIMigrationException {
-
-    }
 }

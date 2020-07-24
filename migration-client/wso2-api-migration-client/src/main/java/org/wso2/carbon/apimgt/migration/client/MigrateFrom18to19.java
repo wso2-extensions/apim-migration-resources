@@ -1268,15 +1268,6 @@ public class MigrateFrom18to19 extends MigrationClientBase implements MigrationC
     public void scopeMigration() throws APIMigrationException {
     }
 
-    @Override
-    public void spMigration() throws APIMigrationException {
-    }
-
-    @Override
-    public void appGrantMigration() throws APIMigrationException {
-
-    }
-
     /**
      * This method will be used to populate SP_APP table
      */
