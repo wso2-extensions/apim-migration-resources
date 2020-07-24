@@ -182,13 +182,4 @@ public class APIMStatMigrationClient extends MigrationClientBase implements Migr
     @Override
     public void scopeMigration() throws APIMigrationException {
     }
-
-    @Override
-    public void spMigration() throws APIMigrationException {
-    }
-
-    @Override
-    public void appGrantMigration() throws APIMigrationException {
-
-    }
 }

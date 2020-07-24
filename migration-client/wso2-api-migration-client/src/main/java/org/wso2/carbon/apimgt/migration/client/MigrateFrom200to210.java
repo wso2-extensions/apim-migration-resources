@@ -85,15 +85,6 @@ public class MigrateFrom200to210 extends MigrationClientBase implements Migratio
     public void scopeMigration() throws APIMigrationException {
     }
 
-    @Override
-    public void spMigration() throws APIMigrationException {
-    }
-
-    @Override
-    public void appGrantMigration() throws APIMigrationException {
-
-    }
-
     private void migrateFaultSequencesInRegistry() {
 
         /* change the APIMgtFaultHandler class name in debug_json_fault.xml and json_fault.xml
