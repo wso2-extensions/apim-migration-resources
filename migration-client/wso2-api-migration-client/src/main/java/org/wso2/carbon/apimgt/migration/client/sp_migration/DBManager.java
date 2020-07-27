@@ -20,7 +20,7 @@ package org.wso2.carbon.apimgt.migration.client.sp_migration;
 
 public interface DBManager {
 
-    void initialize() throws APIMStatMigrationException;
+    void initialize(String migrateFromVersion) throws APIMStatMigrationException;
 
     void migrateDestinationSummaryTable() throws APIMStatMigrationException;
 
@@ -48,5 +48,8 @@ public interface DBManager {
 
     void migrateRequestSummaryTable() throws APIMStatMigrationException;
 
+    void sortGraphQLOperation() throws APIMStatMigrationException;
+
+    void migrateAlerts() throws APIMStatMigrationException;
 }
 

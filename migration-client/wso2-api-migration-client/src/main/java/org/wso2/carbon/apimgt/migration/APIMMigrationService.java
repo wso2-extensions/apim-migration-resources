@@ -78,19 +78,27 @@ public class APIMMigrationService implements ServerStartupObserver {
         boolean isSPMigration = Boolean.parseBoolean(System.getProperty(APIMStatMigrationConstants.ARG_MIGRATE_SP));
         boolean isSP_APP_Population = Boolean.parseBoolean(System.getProperty(Constants.ARG_POPULATE_SPAPP));
         boolean isScopeRoleMappingPopulation = Boolean.parseBoolean(System.getProperty(Constants.ARG_POPULATE_SCOPE_ROLE_MAPPING));
+        boolean migrateAlerts = Boolean.parseBoolean(System.getProperty("migrateAlert"));
 
         try {
             RegistryServiceImpl registryService = new RegistryServiceImpl();
             TenantManager tenantManager = ServiceHolder.getRealmService().getTenantManager();
             //Check SP-Migration enabled
             if (isSPMigration) {
-                log.info("----------------Migrating to WSO2 API Manager 2.6.0 stats DB----------------------");
+                log.info("----------------Migrating to WSO2 API Manager analytics 3.2.0");
                 // Create a thread and wait till the APIManager DBUtils is initialized
                 MigrationClient migrateStatDB = new APIMStatMigrationClient(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
                 DBManager dbManager = new DBManagerImpl();
-                dbManager.initialize();
-                migrateStatDB.statsMigration();
+                dbManager.initialize(migrateFromVersion);
+                if(migrateFromVersion.equals("3.1.0")){
+                    dbManager.sortGraphQLOperation();
+                    dbManager.migrateAlerts();
+
+                } else if (migrateFromVersion.equals("2.0.0") || migrateFromVersion.equals("2.1.0") ||
+                        migrateFromVersion.equals("2.2.0") || migrateFromVersion.equals("2.5.0")){
+                     migrateStatDB.statsMigration();
+                }
                 log.info("------------------------------Stat migration completed----------------------------------");
                 if (log.isDebugEnabled()) {
                     log.debug("----------------API Manager 2.6.0 Stat migration successfully completed------------");

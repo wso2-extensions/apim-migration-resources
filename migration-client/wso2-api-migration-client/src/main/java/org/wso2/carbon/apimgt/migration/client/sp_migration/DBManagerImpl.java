@@ -30,6 +30,7 @@ import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
 import java.sql.*;
+import java.util.Arrays;
 
 
 public class DBManagerImpl implements DBManager {
@@ -56,7 +57,7 @@ public class DBManagerImpl implements DBManager {
      * @throws APIMStatMigrationException when there is an error looking up the datasources
      */
     @Override
-    public void initialize() throws APIMStatMigrationException {
+    public void initialize(String migrateFromVersion) throws APIMStatMigrationException {
         String dataSourceName = System.getProperty(APIMStatMigrationConstants.DATA_SOURCE_NAME);
         String[] dataSourceNames;
         //Get data source as outside parameter
@@ -66,13 +67,17 @@ public class DBManagerImpl implements DBManager {
             OLD_STATS_DATA_SOURCE_NAME = dataSourceNames[1];
             NEW_STATS_DATA_SOURCE_NAME = dataSourceNames[2];
         }
-        try {
-            Context ctx = new InitialContext();
-            oldStatsDataSource = (DataSource) ctx.lookup(OLD_STATS_DATA_SOURCE_NAME);
-        } catch (NamingException e) {
-            String msg = "Error while looking up the data source: " + OLD_STATS_DATA_SOURCE_NAME;
-            log.error(msg);
-            throw new APIMStatMigrationException(msg);
+
+        if(migrateFromVersion.equals("2.0.0") || migrateFromVersion.equals("2.1.0") ||
+                migrateFromVersion.equals("2.2.0") || migrateFromVersion.equals("2.5.0")) {
+            try {
+                Context ctx = new InitialContext();
+                oldStatsDataSource = (DataSource) ctx.lookup(OLD_STATS_DATA_SOURCE_NAME);
+            } catch (NamingException e) {
+                String msg = "Error while looking up the data source: " + OLD_STATS_DATA_SOURCE_NAME;
+                log.error(msg);
+                throw new APIMStatMigrationException(msg);
+            }
         }
 
         try {
@@ -1335,6 +1340,104 @@ public class DBManagerImpl implements DBManager {
             closeDatabaseLinks(resultSetRetrieved, statement1, con1);
             closeDatabaseLinks(null, statement2, con2);
             closeDatabaseLinks(resultSetFromAMDB, statement3, con3);
+        }
+    }
+
+    @Override
+    public void sortGraphQLOperation() throws APIMStatMigrationException {
+        Connection con = null;
+        PreparedStatement retrievingStatement = null;
+        PreparedStatement updateStatement = null;
+        ResultSet resultSetRetrieved = null;
+        String[] tableNamesArray = {APIMStatMigrationConstants.API_RESOURCE_PATH_AGG,
+                APIMStatMigrationConstants.API_EXEC_TIME_AGG};
+        String[] granularities = {"SECONDS", "MINUTES", "HOURS", "DAYS", "MONTHS", "YEARS"};
+        try {
+            con = newStatsDataSource.getConnection();
+            for (String aggName : tableNamesArray) {
+                for (String granularity : granularities) {
+                    String tableName = aggName + "_" + granularity;
+                    if (isTableExist(tableName, con)) {
+                        String retrieveQuery = "SELECT apiResourceTemplate from " + tableName;
+                        String updateQuery = "UPDATE " + tableName + " set apiResourceTemplate = ? " +
+                                "WHERE apiResourceTemplate = ? ";
+                        retrievingStatement = con.prepareStatement(retrieveQuery);
+                        updateStatement = con.prepareStatement(updateQuery);
+                        resultSetRetrieved = retrievingStatement.executeQuery();
+                        while (resultSetRetrieved.next()) {
+                            String resourceTemplate = resultSetRetrieved.getString(
+                                    APIMStatMigrationConstants.API_RESOURCE_TEMPLATE);
+                            String[] splittedOperation = resourceTemplate.split(",");
+                            if (splittedOperation.length > 1) {
+                                Arrays.sort(splittedOperation);
+                                String sortedOperations = String.join(",", splittedOperation);
+                                if (!sortedOperations.equals(resourceTemplate)) {
+                                    updateStatement.setString(1, sortedOperations);
+                                    updateStatement.setString(2, resourceTemplate);
+                                    updateStatement.addBatch();
+                                }
+                            }
+                        }
+                        updateStatement.executeBatch();
+                    } else {
+                        String msg = tableName + " Table does not exists.";
+                        log.error(msg);
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            String msg = "Error while sorting GraphQL operations";
+            throw new APIMStatMigrationException(msg, ex);
+        }
+    }
+
+    @Override
+    public void migrateAlerts() throws APIMStatMigrationException {
+        Connection con = null;
+        PreparedStatement retrieveStatement = null;
+        PreparedStatement retrieveApiNameStatement = null;
+        PreparedStatement updateStatement = null;
+        ResultSet resultSetRetrieved = null;
+        ResultSet resultSetRetrievedFromIA = null;
+        try {
+            con = newStatsDataSource.getConnection();
+            if(isTableExist(APIMStatMigrationConstants.API_ALL_ALERT_TABLE, con)){
+                String retrieveQuery = "SELECT * FROM " + APIMStatMigrationConstants.API_ALL_ALERT_TABLE;
+                String updateQuery = "UPDATE "+ APIMStatMigrationConstants.API_ALL_ALERT_TABLE +
+                        " set apiName = ? WHERE alertTimestamp = ? and message = ? and tenantDomain = ?";
+                retrieveStatement = con.prepareStatement(retrieveQuery);
+                updateStatement = con.prepareStatement(updateQuery);
+                resultSetRetrieved = retrieveStatement.executeQuery();
+                while (resultSetRetrieved.next()){
+                    String alertType = resultSetRetrieved.getString(APIMStatMigrationConstants.TYPE);
+                    String message = resultSetRetrieved.getString(APIMStatMigrationConstants.MESSAGE);
+                    String tenantDomain = resultSetRetrieved.getString(APIMStatMigrationConstants.TENANT_DOMAIN);
+                    String alertTimeStamp = resultSetRetrieved.getString(
+                            APIMStatMigrationConstants.ALERT_TIMESTAMP);
+
+                    if(alertType.equals("FrequentTierLimitHitting")){
+                        String retrieveApiNameQuery = "SELECT apiName from ApimTierLimitHittingAlert" +
+                                "WHERE alertTimestamp = ? and message = ? and apiCreatorTenantDomain = ?";
+                        retrieveApiNameStatement = con.prepareStatement(retrieveApiNameQuery);
+                        retrieveApiNameStatement.setString(1, alertTimeStamp);
+                        retrieveApiNameStatement.setString(2, message);
+                        retrieveApiNameStatement.setString(3, tenantDomain);
+                        resultSetRetrievedFromIA = retrieveApiNameStatement.executeQuery();
+                        while (resultSetRetrievedFromIA.next()){
+                            String apiName = resultSetRetrieved.getString(
+                                    APIMStatMigrationConstants.ALERT_TIMESTAMP);
+                            updateStatement.setString(1, apiName);
+                            updateStatement.setString(2, alertTimeStamp);
+                            updateStatement.setString(3, message);
+                            updateStatement.setString(4, tenantDomain);
+                            updateStatement.addBatch();
+                        }
+                        updateStatement.executeUpdate();
+                    }
+                }
+            }
+        } catch (SQLException ex){
+
         }
     }
 
