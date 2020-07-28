@@ -85,6 +85,12 @@ public class APIMgtDAO {
             " SCOPE_ID = ?";
     private static String UPDATE_SCOPE_ID_IN_RESOURCE = "UPDATE" +
             " IDN_OAUTH2_RESOURCE_SCOPE SET SCOPE_ID = ? WHERE SCOPE_ID = ?";
+    private static String GET_APPS_OF_TYPE_JWT = "SELECT IOP.CONSUMER_KEY FROM AM_APPLICATION AMA " +
+            "INNER JOIN AM_APPLICATION_KEY_MAPPING AKM ON AMA.APPLICATION_ID=AKM.APPLICATION_ID " +
+            "INNER JOIN IDN_OIDC_PROPERTY IOP ON AKM.CONSUMER_KEY=IOP.CONSUMER_KEY " +
+            "WHERE AMA.TOKEN_TYPE = 'JWT' AND PROPERTY_KEY = 'tokenType' AND TENANT_ID = ?";
+    private static String UPDATE_TOKEN_TYPE_TO_JWT = "UPDATE IDN_OIDC_PROPERTY SET" +
+            " PROPERTY_VALUE = ? WHERE PROPERTY_KEY  = 'tokenType' AND CONSUMER_KEY = ?";
 
     private APIMgtDAO() {
     }
@@ -368,6 +374,53 @@ public class APIMgtDAO {
             }
         } catch (SQLException ex) {
             throw new APIMigrationException("Failed to delete duplicate scope data : ", ex);
+        }
+    }
+
+    /**
+     * Get the list of consumer keys corresponding to the apps created of the type JWT
+     *
+     * @param tenantId Relevant tenant ID of the service provider owner
+     * @return List of consumer keys corresponding to the apps created of the type JWT
+     */
+    public static ArrayList<String> getAppsOfTypeJWT(int tenantId) throws APIMigrationException {
+
+        ArrayList<String> consumerKeys = new ArrayList<String>();
+        try (Connection connection = APIMgtDBUtil.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement preparedStatement = connection.prepareStatement(GET_APPS_OF_TYPE_JWT)){
+                preparedStatement.setInt(1, tenantId);
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    connection.commit();
+                    while (resultSet.next()) {
+                        consumerKeys.add(resultSet.getString("CONSUMER_KEY"));
+                    }
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(GET_APPS_OF_TYPE_JWT), e);
+        }
+        return consumerKeys;
+    }
+
+    /**
+     * Updates the token type of the service provider corresponding to the consumer key provided to the JWT token type
+     *
+     * @param consumerKey The consumer key of the application that needs to be altered
+     */
+    public static void updateTokenTypeToJWT(String consumerKey) throws APIMigrationException {
+
+        try (Connection connection = APIMgtDBUtil.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_TOKEN_TYPE_TO_JWT)){
+                preparedStatement.setString(1, "JWT");
+                preparedStatement.setString(2, consumerKey);
+                preparedStatement.executeUpdate();
+            }
+
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_TOKEN_TYPE_TO_JWT), e);
         }
     }
 }

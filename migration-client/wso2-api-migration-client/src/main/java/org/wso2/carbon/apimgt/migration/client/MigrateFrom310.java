@@ -171,4 +171,22 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
         }
         apiMgtDAO.addDataToResourceScopeMapping(amapiResourceScopeMappingDTOList);
     }
+
+    @Override
+    public void spMigration() throws APIMigrationException {
+
+        List<Tenant> tenantList = getTenantsArray();
+        // Iterate for each tenant. The reason we do this migration step wise for each tenant is so that, we do not
+        // overwhelm the amount of rows returned for each database call in systems with a large tenant count.
+        for (Tenant tenant : tenantList) {
+            ArrayList<String> consumerKeys =  APIMgtDAO.getAppsOfTypeJWT(tenant.getId());
+            if (consumerKeys != null) {
+                for (String consumerKey : consumerKeys) {
+                    APIMgtDAO.updateTokenTypeToJWT(consumerKey);
+                }
+            }
+        }
+    }
+
+
 }

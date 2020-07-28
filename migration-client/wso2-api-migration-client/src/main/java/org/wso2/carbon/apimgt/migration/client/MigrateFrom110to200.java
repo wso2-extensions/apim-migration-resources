@@ -116,7 +116,10 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
     @Override
     public void updateArtifacts() throws APIMigrationException {
         updateAPAIArtifacts();
+    }
 
+    @Override
+    public void spMigration() throws APIMigrationException {
     }
 
     @Override
