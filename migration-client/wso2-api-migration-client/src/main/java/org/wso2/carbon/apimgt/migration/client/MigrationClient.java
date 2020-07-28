@@ -104,4 +104,10 @@ public interface MigrationClient {
      * @throws APIMigrationException
      */
     void scopeMigration() throws APIMigrationException;
+
+    /**
+     * This method is used to migrate service provider information
+     * @throws APIMigrationException
+     */
+    void spMigration() throws APIMigrationException;
 }

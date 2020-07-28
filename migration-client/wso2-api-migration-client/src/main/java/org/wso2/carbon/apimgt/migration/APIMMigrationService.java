@@ -126,6 +126,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
                 migrateFrom310.scopeMigration();
+                migrateFrom310.spMigration();
             } else {
                 MigrationClientFactory.initFactory(tenants, blackListTenants, tenantRange, registryService, tenantManager,
                         removeDecryptionFailedKeysFromDB);
