@@ -125,6 +125,7 @@ public class APIMMigrationService implements ServerStartupObserver {
             } else if(V310.equals(migrateFromVersion)){
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom310.registryResourceMigration();
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();
             } else {
