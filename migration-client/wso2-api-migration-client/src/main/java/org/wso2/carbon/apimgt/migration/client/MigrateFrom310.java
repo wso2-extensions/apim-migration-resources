@@ -35,6 +35,10 @@ import org.wso2.carbon.apimgt.migration.dto.APIInfoScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.dto.APIScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.dto.AMAPIResourceScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.util.RegistryService;
+import org.wso2.carbon.governance.api.exception.GovernanceException;
+import org.wso2.carbon.governance.api.generic.dataobjects.GenericArtifact;
+import org.wso2.carbon.registry.core.Registry;
+import org.wso2.carbon.registry.core.exceptions.RegistryException;
 import org.wso2.carbon.user.api.Tenant;
 import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
@@ -42,8 +46,12 @@ import org.wso2.carbon.user.api.UserStoreManager;
 import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.tenant.TenantManager;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
+import org.wso2.carbon.utils.CarbonUtils;
+import org.wso2.carbon.utils.FileUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -71,6 +79,8 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
 
     @Override
     public void registryResourceMigration() throws APIMigrationException {
+        rxtMigration();
+        updateEnableStoreInRxt();
     }
 
     @Override
@@ -188,5 +198,71 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
         }
     }
 
+    /**
+     * This method is used to migrate rxt
+     * This adds one new attribute (overview_type) to the api rxt
+     *
+     * @throws APIMigrationException
+     */
+    private void rxtMigration() throws APIMigrationException {
+        log.info("Rxt migration for API Manager started.");
 
+        String rxtName = "api.rxt";
+        String rxtDir = CarbonUtils.getCarbonHome() + File.separator + "migration-resources" + File.separator + "rxts"
+                + File.separator + rxtName;
+
+
+        for (Tenant tenant : getTenantsArray()) {
+            try {
+                registryService.startTenantFlow(tenant);
+
+                log.info("Updating api.rxt for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')');
+                //Update api.rxt file
+                String rxt = FileUtil.readFileToString(rxtDir);
+                registryService.updateRXTResource(rxtName, rxt);
+                log.info("End Updating api.rxt for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')');
+            } catch (IOException e) {
+                log.error("Error when reading api.rxt from " + rxtDir + " for tenant " + tenant.getId() + '(' + tenant
+                        .getDomain() + ')', e);
+            } catch (RegistryException e) {
+                log.error("Error while updating api.rxt in the registry for tenant " + tenant.getId() + '('
+                        + tenant.getDomain() + ')', e);
+            } catch (UserStoreException e) {
+                log.error("Error while updating api.rxt in the registry for tenant " + tenant.getId() + '('
+                        + tenant.getDomain() + ')', e);
+            } finally {
+                registryService.endTenantFlow();
+            }
+        }
+        log.info("Rxt resource migration done for all the tenants");
+    }
+
+    private void updateEnableStoreInRxt() {
+        for (Tenant tenant : getTenantsArray()) {
+            try {
+                registryService.startTenantFlow(tenant);
+                log.debug("Updating APIs for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')');
+                GenericArtifact[] artifacts = registryService.getGenericAPIArtifacts();
+                for (GenericArtifact artifact : artifacts) {
+                    String path = artifact.getPath();
+                    if (registryService.isGovernanceRegistryResourceExists(path)) {
+                        Object apiResource = registryService.getGovernanceRegistryResource(path);
+                        if (apiResource == null) {
+                            continue;
+                        }
+                        registryService.updateEnableStoreInRxt(path, artifact);
+                    }
+                }
+                log.info("Completed Updating API artifacts tenant ---- " + tenant.getId() + '(' + tenant.getDomain() + ')');
+            } catch (GovernanceException e) {
+                log.error("Error while accessing API artifact in registry for tenant " + tenant.getId() + '(' +
+                        tenant.getDomain() + ')', e);
+            } catch (RegistryException | UserStoreException e) {
+                log.error("Error while updating API artifact in the registry for tenant " + tenant.getId() + '(' +
+                        tenant.getDomain() + ')', e);
+            } finally {
+                registryService.endTenantFlow();
+            }
+        }
+    }
 }

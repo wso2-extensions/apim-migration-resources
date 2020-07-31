@@ -309,6 +309,7 @@ public class Constants {
     public static final String API_OVERVIEW_VISIBILITY = "overview_visibility";
     public static final String API_OVERVIEW_VISIBLE_ROLES = "overview_visibleRoles";
     public static final String API_OVERVIEW_TYPE = "overview_type";
+    public static final String API_OVERVIEW_ENABLE_STORE = "overview_enableStore";
 
     // User domain names
     public static final String USER_DOMAIN_INTERNAL = "Internal";
