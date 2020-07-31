@@ -428,4 +428,34 @@ public class RegistryServiceImpl implements RegistryService {
             log.error("Error occurred when getting artifact manager", e);
         }
     }
+
+    /**
+     * This method updates the 'enableStore' rxt field in migrated APIs as it has been mandated in devportal api's listing
+     * @param resourcePath
+     * @param artifact
+     */
+    @Override
+    public void updateEnableStoreInRxt(String resourcePath, GenericArtifact artifact) {
+        try {
+            Registry registry = getGovernanceRegistry();
+            GenericArtifactManager artifactManager = APIUtil.getArtifactManager(registry, APIConstants.API_KEY);
+            boolean isResourceUpdated = false;
+            boolean enableStore = Boolean.parseBoolean(artifact.getAttribute(Constants.API_OVERVIEW_ENABLE_STORE));
+            if (enableStore == false) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Setting " + Constants.API_OVERVIEW_ENABLE_STORE + " property of API at " + resourcePath
+                            + "to true.");
+                }
+                artifact.setAttribute(Constants.API_OVERVIEW_ENABLE_STORE, "true");
+                isResourceUpdated = true;
+            }
+            if (isResourceUpdated) {
+                artifactManager.updateGenericArtifact(artifact);
+            }
+        } catch (UserStoreException | RegistryException e) {
+            log.error("Error occurred when updating API Artifact in registry", e);
+        } catch (APIManagementException e) {
+            log.error("Error occurred when getting artifact manager", e);
+        }
+    }
 }

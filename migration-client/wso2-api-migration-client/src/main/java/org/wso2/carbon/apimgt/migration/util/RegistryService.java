@@ -79,6 +79,8 @@ public interface RegistryService {
                                                   String resourcePath) throws APIManagementException;
 
     void updateGenericAPIArtifact(String resourcePath, GenericArtifact artifact);
+
+    void updateEnableStoreInRxt(String resourcePath, GenericArtifact artifact);
 }
 
 

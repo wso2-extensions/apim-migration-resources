@@ -392,6 +392,7 @@ public abstract class MigrationClientBase {
      * This method is used to update the API artifacts in the registry
      * - to migrate Publisher Access Control feature related data.
      * - to add overview_type property to API artifacts
+     * - to add 'enableStore' rxt field
      *
      * @throws APIMigrationException
      */
@@ -410,6 +411,7 @@ public abstract class MigrationClientBase {
                         }
                         registryService.updateGenericAPIArtifactsForAccessControl(path, artifact);
                         registryService.updateGenericAPIArtifact(path, artifact);
+                        registryService.updateEnableStoreInRxt(path,artifact);
                     }
                 }
                 log.info("Completed Updating API artifacts tenant ---- " + tenant.getId() + '(' + tenant.getDomain() + ')');
