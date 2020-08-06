@@ -112,6 +112,10 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
     }
 
     @Override
+    public void updateScopeRoleMappings() throws APIMigrationException {
+    }
+
+    @Override
     public void scopeMigration() throws APIMigrationException {
         APIMgtDAO apiMgtDAO = APIMgtDAO.getInstance();
         // Step 1: remove duplicate entries

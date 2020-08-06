@@ -91,4 +91,8 @@ public class MigrateFrom210 extends MigrationClientBase implements MigrationClie
     @Override
     public void spMigration() throws APIMigrationException {
     }
+
+    @Override
+    public void updateScopeRoleMappings() throws APIMigrationException {
+    }
 }

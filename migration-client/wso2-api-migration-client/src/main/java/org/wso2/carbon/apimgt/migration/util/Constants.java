@@ -318,4 +318,17 @@ public class Constants {
     public static final String CREATOR_ROLE = "Internal/creator";
     public static final String PUBLISHER_ROLE = "Internal/publisher";
     public static final String SUBSCRIBER_ROLE = "Internal/subscriber";
+
+    // Rest API Scopes
+    public static final String API_PUBLISH_SCOPE = "apim:api_publish";
+    public static final String API_CREATE_SCOPE = "apim:api_create";
+    public static final String API_VIEW_SCOPE = "apim:api_view";
+    public static final String TIER_VIEW_SCOPE = "apim:tier_view";
+    public static final String SUBSCRIPTION_VIEW_SCOPE = "apim:subscription_view";
+
+    public static final String SCOPE = "Scope";
+    public static final String NAME = "Name";
+    public static final String ROLES = "Roles";
+    public static final String INTERNAL_CREATOR_ROLE = "Internal/creator";
+    public static final String INTERNAL_PUBLISHER_ROLE = "Internal/publisher";
 }
