@@ -123,6 +123,11 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
     }
 
     @Override
+    public void updateScopeRoleMappings() throws APIMigrationException {
+
+    }
+
+    @Override
     public void statsMigration() throws APIMigrationException {
         log.info("Stat Database migration for API Manager started");
         String statScriptPath = CarbonUtils.getCarbonHome() + File.separator + "migration-scripts" + File.separator +

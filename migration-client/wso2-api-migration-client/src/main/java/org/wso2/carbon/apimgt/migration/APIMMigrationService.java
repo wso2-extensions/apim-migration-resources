@@ -103,6 +103,7 @@ public class APIMMigrationService implements ServerStartupObserver {
 
                 MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
                 log.info("Populating WSO2 API Manager Scope-Role Mapping");
+                scopeRoleMappingPopulation.updateScopeRoleMappings();
                 scopeRoleMappingPopulation.populateScopeRoleMapping();
             } else if (V210.equals(migrateFromVersion) || V220.equals(migrateFromVersion) ||
                     V250.equals(migrateFromVersion) || V260.equals(migrateFromVersion)) {

@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.impl.APIConstants;
@@ -95,6 +96,64 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
     public void populateScopeRoleMapping() throws APIMigrationException {
         log.info("Population of Scope-Role Mapping started");
         populateRoleMappingWithUserRoles();
+    }
+
+    @Override
+    public void updateScopeRoleMappings() throws APIMigrationException {
+        log.info("Started Updating Scope-Role Mappings");
+
+        for (Tenant tenant : getTenantsArray()) {
+            try {
+                registryService.startTenantFlow(tenant);
+
+                String[] scopesAllowedForCreator = {Constants.API_CREATE_SCOPE, Constants.API_VIEW_SCOPE,
+                        Constants.TIER_VIEW_SCOPE, Constants.SUBSCRIPTION_VIEW_SCOPE};
+                String[] scopesAllowedForPublisher = {Constants.API_PUBLISH_SCOPE, Constants.API_VIEW_SCOPE,
+                        Constants.TIER_VIEW_SCOPE};
+                List<String> scopeListAllowedForCreator = Arrays.asList(scopesAllowedForCreator);
+                List<String> scopeListAllowedForPublisher = Arrays.asList(scopesAllowedForPublisher);
+
+                // Retrieve the tenant-conf.json of the corresponding tenant
+                JSONObject tenantConf = APIUtil.getTenantConfig(tenant.getDomain());
+                // Extract the RESTAPIScopes object
+                JSONObject restAPIScopes = (JSONObject) tenantConf.get(APIConstants.REST_API_SCOPES_CONFIG);
+                if (restAPIScopes != null) {
+                    JSONArray scopesArray = (JSONArray)restAPIScopes.get(Constants.SCOPE);
+                    for (Object scopeMapping : scopesArray) {
+                        JSONObject mapping = (JSONObject) scopeMapping;
+                        String scopeName = (String)mapping.get(Constants.NAME);
+                        if (scopeListAllowedForCreator.contains(scopeName)) {
+                            String roleList = (String)mapping.get(Constants.ROLES);
+                            if (!roleList.contains(Constants.INTERNAL_CREATOR_ROLE)) {
+                                roleList = roleList + ", " + Constants.INTERNAL_CREATOR_ROLE;
+                                mapping.put(Constants.ROLES, roleList);
+                            }
+                        }
+                        if (scopeListAllowedForPublisher.contains(scopeName)) {
+                            String roleList = (String)mapping.get(Constants.ROLES);
+                            if (!roleList.contains(Constants.INTERNAL_PUBLISHER_ROLE)) {
+                                roleList = roleList + ", " + Constants.INTERNAL_PUBLISHER_ROLE;
+                                mapping.put(Constants.ROLES, roleList);
+                            }
+                        }
+                    }
+                }
+
+                ObjectMapper mapper = new ObjectMapper();
+                String formattedTenantConf = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tenantConf);
+                APIUtil.updateTenantConf(formattedTenantConf, tenant.getDomain());
+                log.info("Updated scope roles of tenant-conf.json for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')'
+                        + "\n" + formattedTenantConf );
+            } catch (APIManagementException e) {
+                log.error("Error while updating scope role mappings in tenant-conf.json. ", e);
+            } catch (JsonProcessingException e) {
+                log.error("Error while formatting tenant-conf.json of tenant " + tenant.getId());
+            } finally {
+                registryService.endTenantFlow();
+            }
+        }
+
+        log.info("Updating Scope-Role Mappings is complete for all tenants");
     }
 
     @Override

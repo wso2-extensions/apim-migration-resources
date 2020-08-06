@@ -110,4 +110,11 @@ public interface MigrationClient {
      * @throws APIMigrationException
      */
     void spMigration() throws APIMigrationException;
+
+    /**
+     * This method is used to update scope mappings for Internal/publisher and Internal/creator roles during 2.0 to 3.2
+     * migration
+     * @throws APIMigrationException
+     */
+    void updateScopeRoleMappings() throws APIMigrationException;
 }
