@@ -44,6 +44,7 @@ public class MigrateFrom200 extends MigrationClientBase implements MigrationClie
 
     @Override
     public void registryResourceMigration() throws APIMigrationException {
+        rxtMigration(registryService);
         updateGenericAPIArtifacts(registryService);
         migrateFaultSequencesInRegistry(registryService);
     }
