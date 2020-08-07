@@ -78,7 +78,6 @@ public class APIMMigrationService implements ServerStartupObserver {
         boolean isSPMigration = Boolean.parseBoolean(System.getProperty(APIMStatMigrationConstants.ARG_MIGRATE_SP));
         boolean isSP_APP_Population = Boolean.parseBoolean(System.getProperty(Constants.ARG_POPULATE_SPAPP));
         boolean isScopeRoleMappingPopulation = Boolean.parseBoolean(System.getProperty(Constants.ARG_POPULATE_SCOPE_ROLE_MAPPING));
-        boolean migrateAlerts = Boolean.parseBoolean(System.getProperty("migrateAlert"));
 
         try {
             RegistryServiceImpl registryService = new RegistryServiceImpl();
