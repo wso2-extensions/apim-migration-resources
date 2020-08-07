@@ -50,6 +50,7 @@ public class MigrateFrom210 extends MigrationClientBase implements MigrationClie
 
     @Override
     public void registryResourceMigration() throws APIMigrationException {
+        rxtMigration(registryService);
         updateGenericAPIArtifacts(registryService);
     }
 

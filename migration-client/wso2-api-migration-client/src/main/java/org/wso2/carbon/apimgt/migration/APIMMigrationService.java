@@ -105,6 +105,10 @@ public class APIMMigrationService implements ServerStartupObserver {
                 log.info("Populating WSO2 API Manager Scope-Role Mapping");
                 scopeRoleMappingPopulation.updateScopeRoleMappings();
                 scopeRoleMappingPopulation.populateScopeRoleMapping();
+                MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
+                        tenantRange, registryService, tenantManager);
+                migrateFrom310.scopeMigration();
+                migrateFrom310.spMigration();
             } else if (V210.equals(migrateFromVersion) || V220.equals(migrateFromVersion) ||
                     V250.equals(migrateFromVersion) || V260.equals(migrateFromVersion)) {
                 MigrationClient migrateFrom210 = new MigrateFrom210(tenants, blackListTenants, tenantRange, registryService, tenantManager);
@@ -118,6 +122,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
                 migrateFrom310.scopeMigration();
+                migrateFrom310.spMigration();
                 log.info("Migrated Successfully to 3.2");
             } else if (isScopeRoleMappingPopulation) {
                 MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
