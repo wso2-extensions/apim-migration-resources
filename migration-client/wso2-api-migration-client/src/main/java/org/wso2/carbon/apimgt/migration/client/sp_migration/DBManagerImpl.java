@@ -1343,11 +1343,19 @@ public class DBManagerImpl implements DBManager {
         }
     }
 
+    /**
+     * This method sort the graph QL operation stored as API Resource Template into an alphabetical order
+     *
+     * @throws APIMStatMigrationException on error
+     */
     @Override
     public void sortGraphQLOperation() throws APIMStatMigrationException {
         Connection con = null;
         PreparedStatement retrievingStatement = null;
+        PreparedStatement retrievingCountStatement = null;
         PreparedStatement updateStatement = null;
+        PreparedStatement updateCountStatement = null;
+        PreparedStatement deleteStatement = null;
         ResultSet resultSetRetrieved = null;
         String[] tableNamesArray = {APIMStatMigrationConstants.API_RESOURCE_PATH_AGG,
                 APIMStatMigrationConstants.API_EXEC_TIME_AGG};
@@ -1358,27 +1366,108 @@ public class DBManagerImpl implements DBManager {
                 for (String granularity : granularities) {
                     String tableName = aggName + "_" + granularity;
                     if (isTableExist(tableName, con)) {
-                        String retrieveQuery = "SELECT apiResourceTemplate from " + tableName;
+                        String retrieveQuery = "SELECT * from " + tableName;
+                        String retrieveCountQuery = "Select count(apiName) as count from " + tableName + " where " +
+                                "apiResourceTemplate = ? and AGG_TIMESTAMP = ? and AGG_EVENT_TIMESTAMP = ? " +
+                                "and apiContext = ? and apiMethod = ? and apiHostname = ?";
+                        String deleteQuery = "delete  from " + tableName + " where " +
+                                "apiResourceTemplate = ? and AGG_TIMESTAMP = ? and AGG_EVENT_TIMESTAMP = ? " +
+                                "and apiContext = ? and apiMethod = ? and apiHostname = ?";
                         String updateQuery = "UPDATE " + tableName + " set apiResourceTemplate = ? " +
-                                "WHERE apiResourceTemplate = ? ";
+                                "WHERE apiResourceTemplate = ? and AGG_TIMESTAMP = ? and AGG_EVENT_TIMESTAMP = ? " +
+                                "and apiContext = ? and apiMethod = ? and apiHostname = ?";
+                        String updateCountQuery = "UPDATE " + tableName + " set AGG_COUNT = AGG_COUNT + ? " +
+                                "WHERE apiResourceTemplate = ? and AGG_TIMESTAMP = ? and AGG_EVENT_TIMESTAMP = ? " +
+                                "and apiContext = ? and apiMethod = ? and apiHostname = ? ";
+
+                        if (tableName.contains(APIMStatMigrationConstants.API_RESOURCE_PATH_AGG)) {
+                            retrieveCountQuery = retrieveCountQuery + " and applicationId = ?";
+                            updateQuery = updateQuery + " and applicationId = ?";
+                            updateCountQuery = updateCountQuery + " and applicationId = ?";
+                            deleteQuery = deleteQuery + " and applicationId = ?";
+                        }
                         retrievingStatement = con.prepareStatement(retrieveQuery);
                         updateStatement = con.prepareStatement(updateQuery);
+                        updateCountStatement = con.prepareStatement(updateCountQuery);
+                        deleteStatement = con.prepareStatement(deleteQuery);
                         resultSetRetrieved = retrievingStatement.executeQuery();
                         while (resultSetRetrieved.next()) {
                             String resourceTemplate = resultSetRetrieved.getString(
                                     APIMStatMigrationConstants.API_RESOURCE_TEMPLATE);
+                            String aggTimestamp = resultSetRetrieved.getString(
+                                    APIMStatMigrationConstants.AGG_TIMESTAMP);
+                            String aggEventTimestamp = resultSetRetrieved.getString(
+                                    APIMStatMigrationConstants.AGG_EVENT_TIMESTAMP);
+                            String apiContext = resultSetRetrieved.getString(
+                                    APIMStatMigrationConstants.API_CONTEXT);
+                            String apiHostname = resultSetRetrieved.getString(APIMStatMigrationConstants.API_HOSTNAME);
+                            String apiMethod = resultSetRetrieved.getString(
+                                    APIMStatMigrationConstants.API_METHOD);
+                            String aggCount = resultSetRetrieved.getString(APIMStatMigrationConstants.AGG_COUNT);
+                            String applicationId = null;
+                            if (tableName.contains(APIMStatMigrationConstants.API_RESOURCE_PATH_AGG)) {
+                                applicationId = resultSetRetrieved.getString(
+                                        APIMStatMigrationConstants.APPLICATION_ID);
+                            }
                             String[] splittedOperation = resourceTemplate.split(",");
                             if (splittedOperation.length > 1) {
                                 Arrays.sort(splittedOperation);
                                 String sortedOperations = String.join(",", splittedOperation);
                                 if (!sortedOperations.equals(resourceTemplate)) {
-                                    updateStatement.setString(1, sortedOperations);
-                                    updateStatement.setString(2, resourceTemplate);
-                                    updateStatement.addBatch();
+                                    retrievingCountStatement = con.prepareStatement(retrieveCountQuery);
+                                    retrievingCountStatement.setString(1, sortedOperations);
+                                    retrievingCountStatement.setString(2, aggTimestamp);
+                                    retrievingCountStatement.setString(3, aggEventTimestamp);
+                                    retrievingCountStatement.setString(4, apiContext);
+                                    retrievingCountStatement.setString(5, apiMethod);
+                                    retrievingCountStatement.setString(6, apiHostname);
+                                    if (tableName.contains(APIMStatMigrationConstants.API_RESOURCE_PATH_AGG)) {
+                                        retrievingCountStatement.setString(7, applicationId);
+                                    }
+                                    ResultSet countSet = retrievingCountStatement.executeQuery();
+                                    int count = 0;
+                                    while (countSet.next()) {
+                                        count = Integer.parseInt(countSet.getString(APIMStatMigrationConstants.COUNT));
+                                    }
+                                    if (count > 0) {
+                                        updateCountStatement.setString(1, aggCount);
+                                        updateCountStatement.setString(2, sortedOperations);
+                                        updateCountStatement.setString(3, aggTimestamp);
+                                        updateCountStatement.setString(4, aggEventTimestamp);
+                                        updateCountStatement.setString(5, apiContext);
+                                        updateCountStatement.setString(6, apiMethod);
+                                        updateCountStatement.setString(7, apiHostname);
+                                        deleteStatement.setString(1, resourceTemplate);
+                                        deleteStatement.setString(2, aggTimestamp);
+                                        deleteStatement.setString(3, aggEventTimestamp);
+                                        deleteStatement.setString(4, apiContext);
+                                        deleteStatement.setString(5, apiMethod);
+                                        deleteStatement.setString(6, apiHostname);
+                                        if (tableName.contains(APIMStatMigrationConstants.API_RESOURCE_PATH_AGG)) {
+                                            updateCountStatement.setString(8, applicationId);
+                                            deleteStatement.setString(7, applicationId);
+                                        }
+                                        updateCountStatement.addBatch();
+                                        deleteStatement.addBatch();
+                                    } else {
+                                        updateStatement.setString(1, sortedOperations);
+                                        updateStatement.setString(2, resourceTemplate);
+                                        updateStatement.setString(3, aggTimestamp);
+                                        updateStatement.setString(4, aggEventTimestamp);
+                                        updateStatement.setString(5, apiContext);
+                                        updateStatement.setString(6, apiMethod);
+                                        updateStatement.setString(7, apiHostname);
+                                        if (tableName.contains(APIMStatMigrationConstants.API_RESOURCE_PATH_AGG)) {
+                                            updateStatement.setString(8, applicationId);
+                                        }
+                                        updateStatement.addBatch();
+                                    }
                                 }
                             }
                         }
+                        updateCountStatement.executeBatch();
                         updateStatement.executeBatch();
+                        deleteStatement.executeBatch();
                     } else {
                         String msg = tableName + " Table does not exists.";
                         log.error(msg);
@@ -1390,57 +1479,6 @@ public class DBManagerImpl implements DBManager {
             throw new APIMStatMigrationException(msg, ex);
         }
     }
-
-    @Override
-    public void migrateAlerts() throws APIMStatMigrationException {
-        Connection con = null;
-        PreparedStatement retrieveStatement = null;
-        PreparedStatement retrieveApiNameStatement = null;
-        PreparedStatement updateStatement = null;
-        ResultSet resultSetRetrieved = null;
-        ResultSet resultSetRetrievedFromIA = null;
-        try {
-            con = newStatsDataSource.getConnection();
-            if(isTableExist(APIMStatMigrationConstants.API_ALL_ALERT_TABLE, con)){
-                String retrieveQuery = "SELECT * FROM " + APIMStatMigrationConstants.API_ALL_ALERT_TABLE;
-                String updateQuery = "UPDATE "+ APIMStatMigrationConstants.API_ALL_ALERT_TABLE +
-                        " set apiName = ? WHERE alertTimestamp = ? and message = ? and tenantDomain = ?";
-                retrieveStatement = con.prepareStatement(retrieveQuery);
-                updateStatement = con.prepareStatement(updateQuery);
-                resultSetRetrieved = retrieveStatement.executeQuery();
-                while (resultSetRetrieved.next()){
-                    String alertType = resultSetRetrieved.getString(APIMStatMigrationConstants.TYPE);
-                    String message = resultSetRetrieved.getString(APIMStatMigrationConstants.MESSAGE);
-                    String tenantDomain = resultSetRetrieved.getString(APIMStatMigrationConstants.TENANT_DOMAIN);
-                    String alertTimeStamp = resultSetRetrieved.getString(
-                            APIMStatMigrationConstants.ALERT_TIMESTAMP);
-
-                    if(alertType.equals("FrequentTierLimitHitting")){
-                        String retrieveApiNameQuery = "SELECT apiName from ApimTierLimitHittingAlert" +
-                                "WHERE alertTimestamp = ? and message = ? and apiCreatorTenantDomain = ?";
-                        retrieveApiNameStatement = con.prepareStatement(retrieveApiNameQuery);
-                        retrieveApiNameStatement.setString(1, alertTimeStamp);
-                        retrieveApiNameStatement.setString(2, message);
-                        retrieveApiNameStatement.setString(3, tenantDomain);
-                        resultSetRetrievedFromIA = retrieveApiNameStatement.executeQuery();
-                        while (resultSetRetrievedFromIA.next()){
-                            String apiName = resultSetRetrieved.getString(
-                                    APIMStatMigrationConstants.ALERT_TIMESTAMP);
-                            updateStatement.setString(1, apiName);
-                            updateStatement.setString(2, alertTimeStamp);
-                            updateStatement.setString(3, message);
-                            updateStatement.setString(4, tenantDomain);
-                            updateStatement.addBatch();
-                        }
-                        updateStatement.executeUpdate();
-                    }
-                }
-            }
-        } catch (SQLException ex){
-
-        }
-    }
-
 
     /**
      * This method migrates the data related to the API_REQ_GEO_LOC_SUMMARY table

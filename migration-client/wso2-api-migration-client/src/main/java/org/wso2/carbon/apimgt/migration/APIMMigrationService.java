@@ -91,17 +91,15 @@ public class APIMMigrationService implements ServerStartupObserver {
                         tenantRange, registryService, tenantManager);
                 DBManager dbManager = new DBManagerImpl();
                 dbManager.initialize(migrateFromVersion);
-                if(migrateFromVersion.equals("3.1.0")){
+                if(migrateFromVersion.equals(V310)){
                     dbManager.sortGraphQLOperation();
-                    dbManager.migrateAlerts();
-
-                } else if (migrateFromVersion.equals("2.0.0") || migrateFromVersion.equals("2.1.0") ||
-                        migrateFromVersion.equals("2.2.0") || migrateFromVersion.equals("2.5.0")){
+                } else if (migrateFromVersion.equals(V200) || migrateFromVersion.equals(V210) ||
+                        migrateFromVersion.equals(V220) || migrateFromVersion.equals(V250)){
                      migrateStatDB.statsMigration();
                 }
                 log.info("------------------------------Stat migration completed----------------------------------");
                 if (log.isDebugEnabled()) {
-                    log.debug("----------------API Manager 2.6.0 Stat migration successfully completed------------");
+                    log.debug("----------------API Manager 3.2.0 Stat migration successfully completed------------");
                 }
                 //Check AccessControl-Migration enabled
             } else if (V200.equals(migrateFromVersion)) {

@@ -50,6 +50,5 @@ public interface DBManager {
 
     void sortGraphQLOperation() throws APIMStatMigrationException;
 
-    void migrateAlerts() throws APIMStatMigrationException;
 }
 
