@@ -43,6 +43,7 @@ public class APIMMigrationService implements ServerStartupObserver {
     private final String V250 = "2.5.0";
     private final String V260 = "2.6.0";
     private final String V310 = "3.1.0";
+    private final String V300 = "3.0.0";
 
     @Override
     public void completingServerStartup() {
@@ -128,7 +129,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
                 log.info("Populating WSO2 API Manager Scope-Role Mapping");
                 scopeRoleMappingPopulation.populateScopeRoleMapping();
-            } else if(V310.equals(migrateFromVersion)){
+            } else if(V310.equals(migrateFromVersion) || V300.equals(migrateFromVersion)) {
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
                 migrateFrom310.registryResourceMigration();
