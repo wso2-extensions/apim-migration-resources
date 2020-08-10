@@ -26,6 +26,17 @@ public class APIMStatMigrationConstants {
 
     public static final String API_RESOURCE_USAGE_SUMMARY = "API_Resource_USAGE_SUMMARY";
     public static final String API_RESOURCE_PATH_AGG = "ApiResPathPerApp";
+    public static final String TENANT_DOMAIN = "tenantDomain";
+    public static final String TYPE = "type";
+    public static final String API_RESOURCE_TEMPLATE = "apiResourceTemplate";
+    public static final String AGG_TIMESTAMP = "AGG_TIMESTAMP";
+    public static final String AGG_EVENT_TIMESTAMP = "AGG_EVENT_TIMESTAMP";
+    public static final String AGG_COUNT = "AGG_COUNT";
+    public static final String API_CONTEXT = "apiContext";
+    public static final String API_HOSTNAME = "apiHostname";
+    public static final String API_METHOD = "apiMethod";
+    public static final String APPLICATION_ID = "applicationId";
+    public static final String COUNT = "count";
 
     public static final String API_VERSION_USAGE_SUMMARY = "API_VERSION_USAGE_SUMMARY";
     public static final String API_VERSION_USAGE_AGG = "ApiVersionPerAppAgg";
