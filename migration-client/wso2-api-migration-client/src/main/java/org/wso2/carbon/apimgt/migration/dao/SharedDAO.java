@@ -88,6 +88,50 @@ public class SharedDAO {
         return userRoleFromPermissionList;
     }
 
+    public List<UserRoleFromPermissionDTO> getRoleNamesMatchingPermissions(String permissions, int tenantId) throws APIMigrationException {
+        List<UserRoleFromPermissionDTO> userRoleFromPermissionList = new ArrayList<UserRoleFromPermissionDTO>();
+
+        String sqlQuery =
+                " SELECT " +
+                "   DISTINCT UM_ROLE_NAME, UM_DOMAIN_NAME " +
+                " FROM " +
+                "   UM_ROLE_PERMISSION, UM_PERMISSION, UM_DOMAIN " +
+                " WHERE " +
+                "   UM_ROLE_PERMISSION.UM_PERMISSION_ID=UM_PERMISSION.UM_ID " +
+                "   AND " +
+                "   UM_ROLE_PERMISSION.UM_DOMAIN_ID=UM_DOMAIN.UM_DOMAIN_ID " +
+                "   AND " +
+                "   UM_RESOURCE_ID IN (" + permissions + ")" +
+                "   AND " +
+                "   UM_ROLE_PERMISSION.UM_TENANT_ID = ?";
+
+        try (Connection conn = SharedDBUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sqlQuery);) {
+
+            ps.setInt(1, tenantId);
+
+            try (ResultSet resultSet = ps.executeQuery();) {
+                while (resultSet.next()) {
+                    String userRoleName = resultSet.getString(Constants.UM_ROLE_NAME);
+                    String userRoleDomainName = resultSet.getString(Constants.UM_DOMAIN_NAME);
+                    UserRoleFromPermissionDTO userRoleFromPermissionDTO = new UserRoleFromPermissionDTO();
+                    userRoleFromPermissionDTO.setUserRoleName(userRoleName);
+                    userRoleFromPermissionDTO.setUserRoleDomainName(userRoleDomainName);
+                    userRoleFromPermissionList.add(userRoleFromPermissionDTO);
+
+                    log.info("User role name: " + userRoleName + ", User domain name: " + userRoleDomainName
+                            + " retrieved for " + tenantId);
+                }
+            } catch (SQLException e) {
+                throw new APIMigrationException("Failed to get the result set.", e);
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("Failed to get Roles matching the permission " + permissions +
+                    " and tenant " + tenantId, e);
+        }
+        return userRoleFromPermissionList;
+    }
+
     /**
      * Method to get the instance of the SharedDAO.
      *

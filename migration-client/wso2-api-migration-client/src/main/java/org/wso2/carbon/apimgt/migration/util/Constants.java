@@ -318,6 +318,7 @@ public class Constants {
     public static final String CREATOR_ROLE = "Internal/creator";
     public static final String PUBLISHER_ROLE = "Internal/publisher";
     public static final String SUBSCRIBER_ROLE = "Internal/subscriber";
+    public static final String ADMIN_ROLE = "admin";
 
     // Rest API Scopes
     public static final String API_PUBLISH_SCOPE = "apim:api_publish";
@@ -329,6 +330,4 @@ public class Constants {
     public static final String SCOPE = "Scope";
     public static final String NAME = "Name";
     public static final String ROLES = "Roles";
-    public static final String INTERNAL_CREATOR_ROLE = "Internal/creator";
-    public static final String INTERNAL_PUBLISHER_ROLE = "Internal/publisher";
 }
