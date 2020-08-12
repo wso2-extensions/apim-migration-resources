@@ -122,6 +122,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom210.registryResourceMigration();
                 MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
                 log.info("Populating WSO2 API Manager Scope-Role Mapping");
+                scopeRoleMappingPopulation.updateScopeRoleMappings();
                 scopeRoleMappingPopulation.populateScopeRoleMapping();
                 log.info("Migrated Successfully to API Manager 3.1");
                 log.info("Starting Migration from API Manager 3.1 to 3.2");
