@@ -182,15 +182,22 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
 
                 // Retrieve user roles which has create permission
                 List<UserRoleFromPermissionDTO> userRolesListWithCreatePermission = SharedDAO.getInstance()
-                        .getRoleNamesMatchingPermission(APIConstants.Permissions.API_CREATE, tenant.getId());
+                        .getRoleNamesMatchingPermission(Constants.API_CREATE, tenant.getId());
 
                 // Retrieve user roles which has publish permission
                 List<UserRoleFromPermissionDTO> userRolesListWithPublishPermission = SharedDAO.getInstance()
-                        .getRoleNamesMatchingPermission(APIConstants.Permissions.API_PUBLISH, tenant.getId());
+                        .getRoleNamesMatchingPermission(Constants.API_PUBLISH, tenant.getId());
 
                 // Retrieve user roles which has subscribe permission
                 List<UserRoleFromPermissionDTO> userRolesListWithSubscribePermission = SharedDAO.getInstance()
-                        .getRoleNamesMatchingPermission(APIConstants.Permissions.API_SUBSCRIBE, tenant.getId());
+                        .getRoleNamesMatchingPermission(Constants.API_SUBSCRIBE, tenant.getId());
+
+                // Retrieve user roles which has manage API permission
+                List<UserRoleFromPermissionDTO> userRolesListWithManageAPIPermission = SharedDAO.getInstance()
+                        .getRoleNamesMatchingPermission(Constants.API_MANAGE, tenant.getId());
+                userRolesListWithCreatePermission.addAll(userRolesListWithManageAPIPermission);
+                userRolesListWithPublishPermission.addAll(userRolesListWithManageAPIPermission);
+                userRolesListWithSubscribePermission.addAll(userRolesListWithManageAPIPermission);
 
                 // Retrieve user roles which has admin permissions
                 List<UserRoleFromPermissionDTO> userRolesListWithAdminPermission = SharedDAO.getInstance()
@@ -271,44 +278,48 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
                                                  List<UserRoleFromPermissionDTO> userRolesListWithPublishPermission,
                                                  List<UserRoleFromPermissionDTO> userRolesListWithSubscribePermission,
                                                  List<UserRoleFromPermissionDTO> userRolesListWithAdminPermission) {
-        if (roleMappings.get(Constants.CREATOR_ROLE) == null) {
-            roleMappings.put(Constants.CREATOR_ROLE,
-                    getUserRoleArrayAsString(userRolesListWithCreatePermission));
-        } else {
-            roleMappings.put(
-                    Constants.CREATOR_ROLE,
-                    getMergedUserRolesAndRoleMappings(userRolesListWithCreatePermission,
-                            String.valueOf(roleMappings.get(Constants.CREATOR_ROLE))));
+        if (userRolesListWithCreatePermission.size() > 0) {
+            if (roleMappings.get(Constants.CREATOR_ROLE) == null) {
+                roleMappings.put(Constants.CREATOR_ROLE,
+                        getUserRoleArrayAsString(userRolesListWithCreatePermission));
+            } else {
+                roleMappings.put(
+                        Constants.CREATOR_ROLE,
+                        getMergedUserRolesAndRoleMappings(userRolesListWithCreatePermission,
+                                String.valueOf(roleMappings.get(Constants.CREATOR_ROLE))));
+            }
         }
 
-        if (roleMappings.get(Constants.PUBLISHER_ROLE) == null) {
-            roleMappings.put(Constants.PUBLISHER_ROLE,
-                    getUserRoleArrayAsString(userRolesListWithPublishPermission));
-        } else {
-            roleMappings.put(
-                    Constants.PUBLISHER_ROLE,
-                    getMergedUserRolesAndRoleMappings(userRolesListWithPublishPermission,
-                            String.valueOf(roleMappings.get(Constants.PUBLISHER_ROLE))));
+        if (userRolesListWithPublishPermission.size() > 0) {
+            if (roleMappings.get(Constants.PUBLISHER_ROLE) == null) {
+                roleMappings
+                        .put(Constants.PUBLISHER_ROLE, getUserRoleArrayAsString(userRolesListWithPublishPermission));
+            } else {
+                roleMappings.put(Constants.PUBLISHER_ROLE,
+                        getMergedUserRolesAndRoleMappings(userRolesListWithPublishPermission,
+                                String.valueOf(roleMappings.get(Constants.PUBLISHER_ROLE))));
+            }
         }
 
-        if (roleMappings.get(Constants.SUBSCRIBER_ROLE) == null) {
-            roleMappings.put(Constants.SUBSCRIBER_ROLE,
-                    getUserRoleArrayAsString(userRolesListWithSubscribePermission));
-        } else {
-            roleMappings.put(
-                    Constants.SUBSCRIBER_ROLE,
-                    getMergedUserRolesAndRoleMappings(userRolesListWithSubscribePermission,
-                            String.valueOf(roleMappings.get(Constants.SUBSCRIBER_ROLE))));
+        if (userRolesListWithSubscribePermission.size() > 0) {
+            if (roleMappings.get(Constants.SUBSCRIBER_ROLE) == null) {
+                roleMappings
+                        .put(Constants.SUBSCRIBER_ROLE, getUserRoleArrayAsString(userRolesListWithSubscribePermission));
+            } else {
+                roleMappings.put(Constants.SUBSCRIBER_ROLE,
+                        getMergedUserRolesAndRoleMappings(userRolesListWithSubscribePermission,
+                                String.valueOf(roleMappings.get(Constants.SUBSCRIBER_ROLE))));
+            }
         }
 
-        if (roleMappings.get(Constants.ADMIN_ROLE) == null) {
-            roleMappings.put(Constants.ADMIN_ROLE,
-                    getUserRoleArrayAsString(userRolesListWithAdminPermission));
-        } else {
-            roleMappings.put(
-                    Constants.ADMIN_ROLE,
-                    getMergedUserRolesAndRoleMappings(userRolesListWithAdminPermission,
-                            String.valueOf(roleMappings.get(Constants.ADMIN_ROLE))));
+        if (userRolesListWithAdminPermission.size() > 0) {
+            if (roleMappings.get(Constants.ADMIN_ROLE) == null) {
+                roleMappings.put(Constants.ADMIN_ROLE, getUserRoleArrayAsString(userRolesListWithAdminPermission));
+            } else {
+                roleMappings.put(Constants.ADMIN_ROLE,
+                        getMergedUserRolesAndRoleMappings(userRolesListWithAdminPermission,
+                                String.valueOf(roleMappings.get(Constants.ADMIN_ROLE))));
+            }
         }
     }
 
