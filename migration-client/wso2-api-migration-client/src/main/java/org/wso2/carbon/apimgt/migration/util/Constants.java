@@ -320,6 +320,13 @@ public class Constants {
     public static final String SUBSCRIBER_ROLE = "Internal/subscriber";
     public static final String ADMIN_ROLE = "admin";
 
+    //Permission Strings
+    public static final String API_CREATE = "/permission/admin/manage/api/create";
+    public static final String API_PUBLISH = "/permission/admin/manage/api/publish";
+    public static final String API_SUBSCRIBE = "/permission/admin/manage/api/subscribe";
+    public static final String API_MANAGE = "/permission/admin/manage/api";
+    public static final String APIM_ADMIN = "/permission/admin/manage/apim_admin";
+
     // Rest API Scopes
     public static final String API_PUBLISH_SCOPE = "apim:api_publish";
     public static final String API_CREATE_SCOPE = "apim:api_create";
