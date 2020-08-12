@@ -202,7 +202,7 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
                 // Retrieve user roles which has admin permissions
                 List<UserRoleFromPermissionDTO> userRolesListWithAdminPermission = SharedDAO.getInstance()
                         .getRoleNamesMatchingPermissions(makePermissionsStringByEscapingSlash(
-                                APIConstants.Permissions.APIM_ADMIN, "/permission"), tenant.getId());
+                                Constants.APIM_ADMIN, "/permission"), tenant.getId());
 
                 // Retrieve the tenant-conf.json of the corresponding tenant
                 JSONObject tenantConf = APIUtil.getTenantConfig(tenant.getDomain());
