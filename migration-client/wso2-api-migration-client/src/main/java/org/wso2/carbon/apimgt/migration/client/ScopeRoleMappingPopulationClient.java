@@ -36,6 +36,7 @@ import org.wso2.carbon.user.api.Tenant;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.tenant.TenantManager;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
+import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -104,7 +105,9 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
 
         for (Tenant tenant : getTenantsArray()) {
             try {
-                registryService.startTenantFlow(tenant);
+                if (tenant.getId() != MultitenantConstants.SUPER_TENANT_ID) {
+                    APIUtil.loadTenantConfigBlockingMode(tenant.getDomain());
+                }
 
                 String[] scopesAllowedForCreator = {Constants.API_CREATE_SCOPE, Constants.API_VIEW_SCOPE,
                         Constants.TIER_VIEW_SCOPE, Constants.SUBSCRIPTION_VIEW_SCOPE};
@@ -148,8 +151,6 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
                 log.error("Error while updating scope role mappings in tenant-conf.json. ", e);
             } catch (JsonProcessingException e) {
                 log.error("Error while formatting tenant-conf.json of tenant " + tenant.getId());
-            } finally {
-                registryService.endTenantFlow();
             }
         }
 
@@ -173,7 +174,9 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
 
         for (Tenant tenant : getTenantsArray()) {
             try {
-                registryService.startTenantFlow(tenant);
+                if (tenant.getId() != MultitenantConstants.SUPER_TENANT_ID) {
+                    APIUtil.loadTenantConfigBlockingMode(tenant.getDomain());
+                }
 
                 log.info("Updating user roles for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')');
 
@@ -221,8 +224,6 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
                 log.error("Error while retrieving role names based on existing permissions. ", e);
             } catch (JsonProcessingException e) {
                 log.error("Error while formatting tenant-conf.json of tenant " + tenant.getId());
-            } finally {
-                registryService.endTenantFlow();
             }
         }
         log.info("Updating User Roles done for all the tenants.");
