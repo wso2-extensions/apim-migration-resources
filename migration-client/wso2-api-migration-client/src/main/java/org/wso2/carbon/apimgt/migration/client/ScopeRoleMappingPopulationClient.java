@@ -137,7 +137,7 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
                     String scopeNameFromRegistry = (String) scopeFromRegistry.get(Constants.NAME);
                     String rolesStringFromRegistry = (String) scopeFromRegistry.get(Constants.ROLES);
                     for (int j = 0; j < scopesArrayFromFile.size(); j++) {
-                        JSONObject scopeFromFile = (JSONObject) scopesArrayFromFile.get(i);
+                        JSONObject scopeFromFile = (JSONObject) scopesArrayFromFile.get(j);
                         String scopeNameFromFile = (String) scopeFromFile.get(Constants.NAME);
                         String rolesStringFromFile = (String) scopeFromFile.get(Constants.ROLES);
                         if (scopeNameFromRegistry.equals(scopeNameFromFile)) {
@@ -399,12 +399,14 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
         File tenantConfFile = new File(tenantConfLocation);
         byte[] data;
         if (tenantConfFile.exists()) { // Load conf from resources directory in pack if it exists
-            FileInputStream fileInputStream = new FileInputStream(tenantConfFile);
-            data = IOUtils.toByteArray(fileInputStream);
+            try (FileInputStream fileInputStream = new FileInputStream(tenantConfFile)) {
+                data = IOUtils.toByteArray(fileInputStream);
+            }
         } else { // Fallback to loading the conf that is stored at jar level if file does not exist in pack
-            InputStream inputStream =
-                    APIManagerComponent.class.getResourceAsStream("/tenant/" + APIConstants.API_TENANT_CONF);
-            data = IOUtils.toByteArray(inputStream);
+            try (InputStream inputStream = APIManagerComponent.class
+                    .getResourceAsStream("/tenant/" + APIConstants.API_TENANT_CONF)) {
+                data = IOUtils.toByteArray(inputStream);
+            }
         }
 
         try {
