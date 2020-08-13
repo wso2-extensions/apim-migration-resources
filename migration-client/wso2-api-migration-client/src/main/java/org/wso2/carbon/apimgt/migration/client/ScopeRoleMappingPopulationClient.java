@@ -18,13 +18,18 @@ package org.wso2.carbon.apimgt.migration.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.openjpa.persistence.jest.JSON;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.impl.APIConstants;
+import org.wso2.carbon.apimgt.impl.internal.APIManagerComponent;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationException;
@@ -36,12 +41,20 @@ import org.wso2.carbon.user.api.Tenant;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.tenant.TenantManager;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
+import org.wso2.carbon.utils.CarbonUtils;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ScopeRoleMappingPopulationClient extends MigrationClientBase implements MigrationClient {
     private static final Log log = LogFactory.getLog(ScopeRoleMappingPopulationClient.class);
@@ -102,62 +115,69 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
     @Override
     public void updateScopeRoleMappings() throws APIMigrationException {
         log.info("Started Updating Scope-Role Mappings");
-
         for (Tenant tenant : getTenantsArray()) {
             try {
                 registryService.startTenantFlow(tenant);
-                if (tenant.getId() != MultitenantConstants.SUPER_TENANT_ID) {
-                    APIUtil.loadAndSyncTenantConf(tenant.getId());
-                }
 
-                String[] scopesAllowedForCreator = {Constants.API_CREATE_SCOPE, Constants.API_VIEW_SCOPE,
-                        Constants.TIER_VIEW_SCOPE, Constants.SUBSCRIPTION_VIEW_SCOPE};
-                String[] scopesAllowedForPublisher = {Constants.API_PUBLISH_SCOPE, Constants.API_VIEW_SCOPE,
-                        Constants.TIER_VIEW_SCOPE};
-                List<String> scopeListAllowedForCreator = Arrays.asList(scopesAllowedForCreator);
-                List<String> scopeListAllowedForPublisher = Arrays.asList(scopesAllowedForPublisher);
+                // Retrieve the tenant-conf.json of the corresponding tenant from registry
+                JSONObject tenantConfFromRegistry = APIUtil.getTenantConfig(tenant.getDomain());
 
-                // Retrieve the tenant-conf.json of the corresponding tenant
-                JSONObject tenantConf = APIUtil.getTenantConfig(tenant.getDomain());
-                // Extract the RESTAPIScopes object
-                JSONObject restAPIScopes = (JSONObject) tenantConf.get(APIConstants.REST_API_SCOPES_CONFIG);
-                if (restAPIScopes != null) {
-                    JSONArray scopesArray = (JSONArray) restAPIScopes.get(Constants.SCOPE);
-                    for (Object scopeMapping : scopesArray) {
-                        JSONObject mapping = (JSONObject) scopeMapping;
-                        String scopeName = (String) mapping.get(Constants.NAME);
-                        if (scopeListAllowedForCreator.contains(scopeName)) {
-                            String roleList = (String) mapping.get(Constants.ROLES);
-                            if (!roleList.contains(Constants.CREATOR_ROLE)) {
-                                roleList = roleList + ", " + Constants.CREATOR_ROLE;
-                                mapping.put(Constants.ROLES, roleList);
+                // Retrieve the tenant-conf.json of the corresponding tenant from file system
+                JSONObject tenantConfFromFile = getTenantConfFromFile();
+
+                JSONObject scopeConfigFromRegistry = (JSONObject) tenantConfFromRegistry
+                        .get(APIConstants.REST_API_SCOPES_CONFIG);
+                JSONObject scopeConfigFromFile = (JSONObject) tenantConfFromFile
+                        .get(APIConstants.REST_API_SCOPES_CONFIG);
+
+                JSONArray scopesArrayFromRegistry = (JSONArray) scopeConfigFromRegistry.get(APIConstants.REST_API_SCOPE);
+                JSONArray scopesArrayFromFile = (JSONArray) scopeConfigFromFile.get(APIConstants.REST_API_SCOPE);
+                for (int i = 0; i < scopesArrayFromRegistry.size(); i++) {
+                    JSONObject scopeFromRegistry = (JSONObject) scopesArrayFromRegistry.get(i);
+                    String scopeNameFromRegistry = (String) scopeFromRegistry.get(Constants.NAME);
+                    String rolesStringFromRegistry = (String) scopeFromRegistry.get(Constants.ROLES);
+                    for (int j = 0; j < scopesArrayFromFile.size(); j++) {
+                        JSONObject scopeFromFile = (JSONObject) scopesArrayFromFile.get(j);
+                        String scopeNameFromFile = (String) scopeFromFile.get(Constants.NAME);
+                        String rolesStringFromFile = (String) scopeFromFile.get(Constants.ROLES);
+                        if (scopeNameFromRegistry.equals(scopeNameFromFile)) {
+                            Set<String> roleSetFromRegistry = new HashSet<>(Arrays.asList(rolesStringFromRegistry.split("\\s*,\\s*")));
+                            Set<String> roleSetFromFile = new HashSet<>(Arrays.asList(rolesStringFromFile.split("\\s*,\\s*")));
+                            roleSetFromFile.removeAll(roleSetFromRegistry);
+                            if (roleSetFromFile.size() > 0) {
+                                log.info("Role Mappings for scope " + scopeNameFromRegistry
+                                        + " has beed updated with additional role(s) " + roleSetFromFile.toString());
+                                String roleStringToBeAdded = roleSetFromFile.toString().replace("[", "")
+                                        .replace("]", "");
+                                scopeFromRegistry
+                                        .put(Constants.ROLES, rolesStringFromRegistry + "," + roleStringToBeAdded);
                             }
-                        }
-                        if (scopeListAllowedForPublisher.contains(scopeName)) {
-                            String roleList = (String) mapping.get(Constants.ROLES);
-                            if (!roleList.contains(Constants.PUBLISHER_ROLE)) {
-                                roleList = roleList + ", " + Constants.PUBLISHER_ROLE;
-                                mapping.put(Constants.ROLES, roleList);
-                            }
+                            break;
                         }
                     }
                 }
 
                 ObjectMapper mapper = new ObjectMapper();
-                String formattedTenantConf = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tenantConf);
+                String formattedTenantConf = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tenantConfFromRegistry);
                 APIUtil.updateTenantConf(formattedTenantConf, tenant.getDomain());
-                log.info("Updated scope roles of tenant-conf.json for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')'
+                log.info("Updated old scope roles of tenant-conf.json for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')'
                         + "\n" + formattedTenantConf);
+
+                //update tenant-conf with new scopes
+                if (tenant.getId() != MultitenantConstants.SUPER_TENANT_ID) {
+                    APIUtil.loadAndSyncTenantConf(tenant.getId());
+                }
             } catch (APIManagementException e) {
-                log.error("Error while updating scope role mappings in tenant-conf.json. ", e);
-            } catch (JsonProcessingException e) {
-                log.error("Error while formatting tenant-conf.json of tenant " + tenant.getId());
+                log.error("Error while fetching tenant-conf of tenant " + tenant.getDomain() + " from registry.");
+            } catch (IOException e) {
+                log.error("Error while fetching tenant-conf of tenant " + tenant.getDomain() + " from file system.");
             } finally {
                 registryService.endTenantFlow();
             }
-        }
 
-        log.info("Updating Scope-Role Mappings is complete for all tenants");
+        }
+        log.info("Finished Updating Scope-Role Mappings for all tenants.");
+
     }
 
     @Override
@@ -362,5 +382,43 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
             }
         }
         return StringUtils.chop(permissions.toString().trim());
+    }
+
+
+    /**
+     * Gets the content of the local tenant-conf.json as a JSON Object
+     *
+     * @return JSON content of the local tenant-conf.json
+     * @throws IOException error while reading local tenant-conf.json
+     */
+    private static JSONObject getTenantConfFromFile() throws IOException, APIMigrationException {
+        JSONObject tenantConfJson = null;
+        String tenantConfLocation = CarbonUtils.getCarbonHome() + File.separator +
+                APIConstants.RESOURCE_FOLDER_LOCATION + File.separator +
+                APIConstants.API_TENANT_CONF;
+        File tenantConfFile = new File(tenantConfLocation);
+        byte[] data;
+        if (tenantConfFile.exists()) { // Load conf from resources directory in pack if it exists
+            try (FileInputStream fileInputStream = new FileInputStream(tenantConfFile)) {
+                data = IOUtils.toByteArray(fileInputStream);
+            }
+        } else { // Fallback to loading the conf that is stored at jar level if file does not exist in pack
+            try (InputStream inputStream = APIManagerComponent.class
+                    .getResourceAsStream("/tenant/" + APIConstants.API_TENANT_CONF)) {
+                data = IOUtils.toByteArray(inputStream);
+            }
+        }
+
+        try {
+            String tenantConfDataStr = new String(data, Charset.defaultCharset());
+            JSONParser parser = new JSONParser();
+            tenantConfJson = (JSONObject) parser.parse(tenantConfDataStr);
+            if (tenantConfJson == null) {
+                throw new APIMigrationException("tenant-conf.json (in file system) content cannot be null");
+            }
+        } catch (ParseException e) {
+            log.error("Error while parsing tenant-conf.json from file system.");
+        }
+        return tenantConfJson;
     }
 }
