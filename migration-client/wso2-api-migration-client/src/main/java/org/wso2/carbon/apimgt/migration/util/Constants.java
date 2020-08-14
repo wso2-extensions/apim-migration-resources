@@ -317,4 +317,8 @@ public class Constants {
     public static final String CREATOR_ROLE = "Internal/creator";
     public static final String PUBLISHER_ROLE = "Internal/publisher";
     public static final String SUBSCRIBER_ROLE = "Internal/subscriber";
+    public static final String ADMIN_ROLE = "admin";
+
+    //Permission Strings
+    public static final String APIM_ADMIN = "/permission/admin/manage/apim_admin";
 }
