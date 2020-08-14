@@ -27,6 +27,7 @@ import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
+import org.wso2.carbon.apimgt.impl.wsdl.util.SOAPOperationBindingUtils;
 import org.wso2.carbon.apimgt.migration.client.internal.ServiceHolder;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.governance.api.exception.GovernanceException;
@@ -411,6 +412,17 @@ public class RegistryServiceImpl implements RegistryService {
             GenericArtifactManager artifactManager = APIUtil.getArtifactManager(registry, APIConstants.API_KEY);
             boolean isResourceUpdated = false;
             String overview_type = artifact.getAttribute(Constants.API_OVERVIEW_TYPE);
+            if (SOAPOperationBindingUtils.isSOAPToRESTApi(artifact.getAttribute(Constants.API_OVERVIEW_NAME),
+                    artifact.getAttribute(Constants.API_OVERVIEW_VERSION),
+                    artifact.getAttribute(Constants.API_OVERVIEW_PROVIDER))) {
+                if (log.isDebugEnabled()) {
+                    log.debug("API at " + resourcePath + "is a SOAPTOREST API, hence adding the overview_type" +
+                            " as SOAPTOREST for that API resource.");
+                }
+                overview_type = Constants.API_TYPE_SOAPTOREST;
+                artifact.setAttribute(Constants.API_OVERVIEW_TYPE, overview_type);
+                isResourceUpdated = true;
+            }
             if (overview_type == null || overview_type.trim().isEmpty()){
                 if (log.isDebugEnabled()) {
                     log.debug("API at " + resourcePath + "did not have property : " + Constants.API_OVERVIEW_TYPE
