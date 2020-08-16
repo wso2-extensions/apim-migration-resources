@@ -423,4 +423,33 @@ public class APIMgtDAO {
             throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_TOKEN_TYPE_TO_JWT), e);
         }
     }
+
+    /**
+     * This method is used to insert data to add default URL Mappings of WS APIs
+     * @param apiId
+     * @throws APIMigrationException
+     */
+    public void addURLTemplatesForWSAPIs(int apiId) throws APIMigrationException {
+        if (apiId == -1) {
+            //application addition has failed
+            return;
+        }
+
+        String sqlQuery = "INSERT INTO AM_API_URL_MAPPING (API_ID,HTTP_METHOD,AUTH_SCHEME,URL_PATTERN) VALUES (?,?,?,?)";
+
+        try (Connection conn = APIMgtDBUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sqlQuery)) {
+            for (String httpVerb: Constants.HTTP_DEFAULT_METHODS) {
+                ps.setInt(1, apiId);
+                ps.setString(2, httpVerb);
+                ps.setString(3, Constants.AUTH_APPLICATION_OR_USER_LEVEL_TOKEN);
+                ps.setString(4, Constants.API_DEFAULT_URI_TEMPLATE);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (SQLException e) {
+            throw new APIMigrationException("Error while adding URL template(s) to the database " + e);
+        }
+    }
+
 }
