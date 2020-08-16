@@ -227,6 +227,10 @@ public class APIMgtDAO {
                 preparedStatement.setInt(1, newScopeId);
                 preparedStatement.setInt(2, scopeId);
                 preparedStatement.executeUpdate();
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_SCOPE_ID_IN_RESOURCE), e);
             }
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_SCOPE_ID_IN_RESOURCE), e);
@@ -339,6 +343,7 @@ public class APIMgtDAO {
     public void addDataToResourceScopeMapping(List<AMAPIResourceScopeMappingDTO> resourceScopeMappingDTOS)
             throws APIMigrationException {
         try (Connection conn = APIMgtDBUtil.getConnection()) {
+            conn.setAutoCommit(false);
             try (PreparedStatement psAddResourceScope =
                          conn.prepareStatement(INSERT_INTO_AM_API_RESOURCE_SCOPE_MAPPING)) {
                 for (AMAPIResourceScopeMappingDTO resourceScopeMappingDTO : resourceScopeMappingDTOS) {
@@ -348,6 +353,10 @@ public class APIMgtDAO {
                     psAddResourceScope.addBatch();
                 }
                 psAddResourceScope.executeBatch();
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw new APIMigrationException("Failed to add data to AM_API_RESOURCE_SCOPE_MAPPING table : ", ex);
             }
         } catch (SQLException ex) {
             throw new APIMigrationException("Failed to add data to AM_API_RESOURCE_SCOPE_MAPPING table : ", ex);
@@ -419,8 +428,11 @@ public class APIMgtDAO {
                 preparedStatement.setString(1, "JWT");
                 preparedStatement.setString(2, consumerKey);
                 preparedStatement.executeUpdate();
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_TOKEN_TYPE_TO_JWT), e);
             }
-
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_TOKEN_TYPE_TO_JWT), e);
         }
