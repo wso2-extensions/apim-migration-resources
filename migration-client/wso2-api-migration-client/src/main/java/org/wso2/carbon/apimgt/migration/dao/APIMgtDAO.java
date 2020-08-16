@@ -91,6 +91,8 @@ public class APIMgtDAO {
             "WHERE AMA.TOKEN_TYPE = 'JWT' AND PROPERTY_KEY = 'tokenType' AND TENANT_ID = ?";
     private static String UPDATE_TOKEN_TYPE_TO_JWT = "UPDATE IDN_OIDC_PROPERTY SET" +
             " PROPERTY_VALUE = ? WHERE PROPERTY_KEY  = 'tokenType' AND CONSUMER_KEY = ?";
+    private static String INSERT_URL_MAPPINGS_FOR_WS_APIS =
+            "INSERT INTO AM_API_URL_MAPPING (API_ID,HTTP_METHOD,AUTH_SCHEME,URL_PATTERN) VALUES (?,?,?,?)";
 
     private APIMgtDAO() {
     }
@@ -431,25 +433,26 @@ public class APIMgtDAO {
      */
     public void addURLTemplatesForWSAPIs(int apiId) throws APIMigrationException {
         if (apiId == -1) {
-            //application addition has failed
             return;
         }
-
-        String sqlQuery = "INSERT INTO AM_API_URL_MAPPING (API_ID,HTTP_METHOD,AUTH_SCHEME,URL_PATTERN) VALUES (?,?,?,?)";
-
-        try (Connection conn = APIMgtDBUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sqlQuery)) {
-            for (String httpVerb: Constants.HTTP_DEFAULT_METHODS) {
-                ps.setInt(1, apiId);
-                ps.setString(2, httpVerb);
-                ps.setString(3, Constants.AUTH_APPLICATION_OR_USER_LEVEL_TOKEN);
-                ps.setString(4, Constants.API_DEFAULT_URI_TEMPLATE);
-                ps.addBatch();
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(INSERT_URL_MAPPINGS_FOR_WS_APIS)) {
+                for (String httpVerb: Constants.HTTP_DEFAULT_METHODS) {
+                    ps.setInt(1, apiId);
+                    ps.setString(2, httpVerb);
+                    ps.setString(3, Constants.AUTH_APPLICATION_OR_USER_LEVEL_TOKEN);
+                    ps.setString(4, Constants.API_DEFAULT_URI_TEMPLATE);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw new APIMigrationException("Error while adding URL template(s) to the database " + e);
             }
-            ps.executeBatch();
         } catch (SQLException e) {
             throw new APIMigrationException("Error while adding URL template(s) to the database " + e);
         }
     }
-
 }
