@@ -61,12 +61,12 @@ public class SharedDAO {
                 "   UM_ROLE_PERMISSION.UM_TENANT_ID = ?";
 
         try (Connection conn = SharedDBUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sqlQuery);) {
+             PreparedStatement ps = conn.prepareStatement(sqlQuery)) {
 
             ps.setString(1, permission);
             ps.setInt(2, tenantId);
 
-            try (ResultSet resultSet = ps.executeQuery();) {
+            try (ResultSet resultSet = ps.executeQuery()) {
                 while (resultSet.next()) {
                     String userRoleName = resultSet.getString(Constants.UM_ROLE_NAME);
                     String userRoleDomainName = resultSet.getString(Constants.UM_DOMAIN_NAME);
@@ -106,11 +106,11 @@ public class SharedDAO {
                 "   UM_ROLE_PERMISSION.UM_TENANT_ID = ?";
 
         try (Connection conn = SharedDBUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sqlQuery);) {
+             PreparedStatement ps = conn.prepareStatement(sqlQuery)) {
 
             ps.setInt(1, tenantId);
 
-            try (ResultSet resultSet = ps.executeQuery();) {
+            try (ResultSet resultSet = ps.executeQuery()) {
                 while (resultSet.next()) {
                     String userRoleName = resultSet.getString(Constants.UM_ROLE_NAME);
                     String userRoleDomainName = resultSet.getString(Constants.UM_DOMAIN_NAME);
