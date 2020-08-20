@@ -123,9 +123,11 @@ public interface MigrationClient {
      * This method is used to check the existence of cross tenant subscriptions
      * during the migrations to 3.2
      *
-     * @param tenantManager Tenant Manager
+     * @param tenantManager                  Tenant Manager
+     * @param ignoreCrossTenantSubscriptions Whether to ignore the validation and proceed with migration
      * @throws APIMigrationException
      */
-    void checkCrossTenantAPISubscriptions(TenantManager tenantManager) throws APIMigrationException;
+    void checkCrossTenantAPISubscriptions(TenantManager tenantManager, boolean ignoreCrossTenantSubscriptions)
+            throws APIMigrationException;
 
-    }
+}
