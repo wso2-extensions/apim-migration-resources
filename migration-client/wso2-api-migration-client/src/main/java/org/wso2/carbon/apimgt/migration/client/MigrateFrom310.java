@@ -230,4 +230,17 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
             }
         }
     }
+
+    @Override
+    public void checkCrossTenantAPISubscriptions(TenantManager tenantManager) throws APIMigrationException {
+
+        APIMgtDAO apiMgtDAO = APIMgtDAO.getInstance();
+        if (apiMgtDAO.isCrossTenantAPISubscriptionsExist(tenantManager)) {
+            log.error("Cross tenant subscriptions exist. " +
+                    "Please contact WSO2 team for the migration");
+            System.exit(1);
+        } else {
+            log.info("No cross tenant subscriptions exist");
+        }
+    }
 }

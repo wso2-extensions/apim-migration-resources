@@ -421,4 +421,8 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
         }
         return tenantConfJson;
     }
+
+    @Override
+    public void checkCrossTenantAPISubscriptions(TenantManager tenantManager) throws APIMigrationException {
+    }
 }

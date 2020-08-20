@@ -91,4 +91,8 @@ public class MigrateFrom200 extends MigrationClientBase implements MigrationClie
     @Override
     public void updateScopeRoleMappings() throws APIMigrationException {
     }
+
+    @Override
+    public void checkCrossTenantAPISubscriptions(TenantManager tenantManager) throws APIMigrationException {
+    }
 }

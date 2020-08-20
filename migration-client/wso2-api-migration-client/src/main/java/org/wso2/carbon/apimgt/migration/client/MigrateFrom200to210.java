@@ -181,6 +181,10 @@ public class MigrateFrom200to210 extends MigrationClientBase implements Migratio
         }
     }
 
+    @Override
+    public void checkCrossTenantAPISubscriptions(TenantManager tenantManager) throws APIMigrationException {
+    }
+
     private static boolean isEmpty(String str) {
         return str == null || str.length() == 0;
     }

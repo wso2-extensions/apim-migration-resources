@@ -113,6 +113,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 scopeRoleMappingPopulation.populateScopeRoleMapping();
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom310.checkCrossTenantAPISubscriptions(tenantManager);
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();
             } else if (V210.equals(migrateFromVersion) || V220.equals(migrateFromVersion) ||
@@ -128,6 +129,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 log.info("Starting Migration from API Manager 3.1 to 3.2");
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom310.checkCrossTenantAPISubscriptions(tenantManager);
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();
                 log.info("Migrated Successfully to 3.2");
@@ -138,6 +140,7 @@ public class APIMMigrationService implements ServerStartupObserver {
             } else if(V310.equals(migrateFromVersion) || V300.equals(migrateFromVersion)) {
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom310.checkCrossTenantAPISubscriptions(tenantManager);
                 migrateFrom310.registryResourceMigration();
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();
