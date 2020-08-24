@@ -78,7 +78,7 @@ public class ResourceModifier200 {
             Element handlersElement = (Element) synapseDTO.getDocument()
                     .getElementsByTagNameNS(Constants.SYNAPSE_API_XMLNS, Constants.SYNAPSE_API_ELEMENT_HANDLERS)
                     .item(0);
-            if (existingThrottleHandler != null && SynapseUtil.isAdvancedThrottlingEnabled()) {
+            if (existingThrottleHandler != null) {
                 Element updatedThrottleHandler = SynapseUtil
                         .createHandler(synapseDTO.getDocument(), Constants.NEW_SYNAPSE_API_VALUE_THROTTLE_HANDLER,
                                 null);

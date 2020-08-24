@@ -191,7 +191,6 @@ public final class MigrationExecutor {
 
         List<String> options = parseOptions(arguments.getOptions());
         if (options != null && options.size() > 0) {
-            StatDBUtil.initialize();
             migrationClient.tierMigration(options);
             log.info("optional migration completed");
         }
