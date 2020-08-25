@@ -100,7 +100,6 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
     /**
      * This method is used to update the scopes of the user roles which will be retrieved based on the
      * permissions assigned.
-     *
      */
     public void populateRoleMappingWithUserRoles() throws APIMigrationException {
         log.info("Updating User Roles based on Permissions started.");
@@ -123,6 +122,11 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
                 List<UserRoleFromPermissionDTO> userRolesListWithSubscribePermission = SharedDAO.getInstance()
                         .getRoleNamesMatchingPermission(APIConstants.Permissions.API_SUBSCRIBE, tenant.getId());
 
+                // Retrieve user roles which has admin permissions
+                List<UserRoleFromPermissionDTO> userRolesListWithAdminPermission = SharedDAO.getInstance()
+                        .getRoleNamesMatchingPermissions(makePermissionsStringByEscapingSlash(
+                                Constants.APIM_ADMIN, "/permission"), tenant.getId());
+
                 // Retrieve the tenant-conf.json of the corresponding tenant
                 JSONObject tenantConf = APIUtil.getTenantConfig(tenant.getDomain());
 
@@ -135,14 +139,15 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
                 }
 
                 createOrUpdateRoleMappingsField(roleMappings, userRolesListWithCreatePermission,
-                        userRolesListWithPublishPermission, userRolesListWithSubscribePermission);
+                        userRolesListWithPublishPermission, userRolesListWithSubscribePermission,
+                        userRolesListWithAdminPermission);
 
                 ObjectMapper mapper = new ObjectMapper();
                 String formattedTenantConf = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tenantConf);
 
                 APIUtil.updateTenantConf(formattedTenantConf, tenant.getDomain());
                 log.info("Updated tenant-conf.json for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')'
-                        + "\n" + formattedTenantConf );
+                        + "\n" + formattedTenantConf);
 
                 log.info("End updating user roles for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')');
             } catch (APIManagementException e) {
@@ -158,31 +163,29 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
 
     /**
      * This method is used to retrieve user roles as a comma separated string
-     *
      */
     private String getUserRoleArrayAsString(List<UserRoleFromPermissionDTO> userRoleFromPermissionDTOs) {
         List<String> updatedUserRoles = new ArrayList<>();
-        for (UserRoleFromPermissionDTO userRoleFromPermissionDTO: userRoleFromPermissionDTOs) {
+        for (UserRoleFromPermissionDTO userRoleFromPermissionDTO : userRoleFromPermissionDTOs) {
             String userRoleName = userRoleFromPermissionDTO.getUserRoleName();
             String domainName = userRoleFromPermissionDTO.getUserRoleDomainName();
             updatedUserRoles.add(addDomainToName(userRoleName, domainName));
         }
-        return StringUtils.join( updatedUserRoles, ",");
+        return StringUtils.join(updatedUserRoles, ",");
     }
 
     /**
      * This method is used to retrieve merged existing role mappings and new user roles
-     *
      */
     private String getMergedUserRolesAndRoleMappings(List<UserRoleFromPermissionDTO> userRoles, String roleMappings) {
         // Splitting
         ArrayList<String> roleMappingsArray = new ArrayList<String>(Arrays.asList(StringUtils.
-                split(roleMappings,",")));
+                split(roleMappings, ",")));
         // Trimming
         for (int i = 0; i < roleMappingsArray.size(); i++)
             roleMappingsArray.set(i, roleMappingsArray.get(i).trim());
 
-        for (UserRoleFromPermissionDTO userRole: userRoles) {
+        for (UserRoleFromPermissionDTO userRole : userRoles) {
             String domainNameAddedUserRoleName = addDomainToName(userRole.getUserRoleName(), userRole.getUserRoleDomainName());
             if (!roleMappingsArray.contains(domainNameAddedUserRoleName)) {
                 roleMappingsArray.add(domainNameAddedUserRoleName);
@@ -190,15 +193,16 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
         }
         return StringUtils.join(roleMappingsArray, ",");
     }
+
     /**
      * This method is used to add the fields (Internal/creator, Internal/publisher and Internal/subscriber) and
      * assign the created user roles list as values to the object
-     *
      */
     private void createOrUpdateRoleMappingsField(JSONObject roleMappings,
                                                  List<UserRoleFromPermissionDTO> userRolesListWithCreatePermission,
                                                  List<UserRoleFromPermissionDTO> userRolesListWithPublishPermission,
-                                                 List<UserRoleFromPermissionDTO> userRolesListWithSubscribePermission) {
+                                                 List<UserRoleFromPermissionDTO> userRolesListWithSubscribePermission,
+                                                 List<UserRoleFromPermissionDTO> userRolesListWithAdminPermission) {
         if (roleMappings.get(Constants.CREATOR_ROLE) == null) {
             roleMappings.put(Constants.CREATOR_ROLE,
                     getUserRoleArrayAsString(userRolesListWithCreatePermission));
@@ -228,11 +232,20 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
                     getMergedUserRolesAndRoleMappings(userRolesListWithSubscribePermission,
                             String.valueOf(roleMappings.get(Constants.SUBSCRIBER_ROLE))));
         }
+
+        if (roleMappings.get(Constants.ADMIN_ROLE) == null) {
+            roleMappings.put(Constants.ADMIN_ROLE,
+                    getUserRoleArrayAsString(userRolesListWithAdminPermission));
+        } else {
+            roleMappings.put(
+                    Constants.ADMIN_ROLE,
+                    getMergedUserRolesAndRoleMappings(userRolesListWithAdminPermission,
+                            String.valueOf(roleMappings.get(Constants.ADMIN_ROLE))));
+        }
     }
 
     /**
      * This method is used to retrieve a string where the domain name is added in front of the user role name
-     *
      */
     private String addDomainToName(String userRoleName, String domainName) {
         if (StringUtils.equals(domainName.toLowerCase(), Constants.USER_DOMAIN_INTERNAL.toLowerCase())) {
@@ -242,5 +255,27 @@ public class ScopeRoleMappingPopulationClient extends MigrationClientBase implem
         } else {
             return UserCoreUtil.addDomainToName(userRoleName, domainName);
         }
+    }
+
+    /**
+     * This method is used to retrieve a string with multiple permissions by escaping slashes
+     * Example: If you provide "/permission/mypermission/" as startPermission and "/permission" as endPermission
+     * this will produces a string as "'/permission/mypermission/', '/permission/mypermission', '/permission/,
+     * '/permission'"
+     */
+    private String makePermissionsStringByEscapingSlash(String startPermission, String endPermission) {
+        StringBuilder permissions = new StringBuilder();
+        permissions.append("'").append(startPermission).append("', ");
+        for (int i = startPermission.length() - 1; i >= 0; i--) {
+            if (!StringUtils.equals(startPermission.substring(0, i + 1), endPermission)) {
+                if (startPermission.charAt(i) == '/') {
+                    permissions.append("'").append(startPermission, 0, i + 1).append("', ");
+                    permissions.append("'").append(startPermission, 0, i).append("', ");
+                }
+            } else {
+                break;
+            }
+        }
+        return StringUtils.chop(permissions.toString().trim());
     }
 }
