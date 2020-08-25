@@ -411,7 +411,7 @@ public class RegistryServiceImpl implements RegistryService {
             Registry registry = getGovernanceRegistry();
             GenericArtifactManager artifactManager = APIUtil.getArtifactManager(registry, APIConstants.API_KEY);
             boolean isResourceUpdated = false;
-            String overview_type = artifact.getAttribute(Constants.API_OVERVIEW_TYPE);
+            String overviewType = artifact.getAttribute(Constants.API_OVERVIEW_TYPE);
             if (SOAPOperationBindingUtils.isSOAPToRESTApi(artifact.getAttribute(Constants.API_OVERVIEW_NAME),
                     artifact.getAttribute(Constants.API_OVERVIEW_VERSION),
                     artifact.getAttribute(Constants.API_OVERVIEW_PROVIDER))) {
@@ -419,11 +419,11 @@ public class RegistryServiceImpl implements RegistryService {
                     log.debug("API at " + resourcePath + "is a SOAPTOREST API, hence adding the overview_type" +
                             " as SOAPTOREST for that API resource.");
                 }
-                overview_type = Constants.API_TYPE_SOAPTOREST;
-                artifact.setAttribute(Constants.API_OVERVIEW_TYPE, overview_type);
+                overviewType = Constants.API_TYPE_SOAPTOREST;
+                artifact.setAttribute(Constants.API_OVERVIEW_TYPE, overviewType);
                 isResourceUpdated = true;
             }
-            if (overview_type == null || overview_type.trim().isEmpty()){
+            if (overviewType == null || overviewType.trim().isEmpty()){
                 if (log.isDebugEnabled()) {
                     log.debug("API at " + resourcePath + "did not have property : " + Constants.API_OVERVIEW_TYPE
                             + ", hence adding the default value - HTTP for that API resource.");
