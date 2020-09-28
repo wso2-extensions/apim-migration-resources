@@ -79,6 +79,8 @@ public class APIMMigrationService implements ServerStartupObserver {
         boolean isSPMigration = Boolean.parseBoolean(System.getProperty(APIMStatMigrationConstants.ARG_MIGRATE_SP));
         boolean isSP_APP_Population = Boolean.parseBoolean(System.getProperty(Constants.ARG_POPULATE_SPAPP));
         boolean isScopeRoleMappingPopulation = Boolean.parseBoolean(System.getProperty(Constants.ARG_POPULATE_SCOPE_ROLE_MAPPING));
+        boolean ignoreCrossTenantSubscriptions =
+                Boolean.parseBoolean(System.getProperty(Constants.ARG_IGNORE_CROSS_TENANT_SUBSCRIPTIONS));
 
         try {
             RegistryServiceImpl registryService = new RegistryServiceImpl();
@@ -113,6 +115,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 scopeRoleMappingPopulation.populateScopeRoleMapping();
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom310.checkCrossTenantAPISubscriptions(tenantManager, ignoreCrossTenantSubscriptions);
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();
             } else if (V210.equals(migrateFromVersion) || V220.equals(migrateFromVersion) ||
@@ -122,11 +125,13 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom210.registryResourceMigration();
                 MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
                 log.info("Populating WSO2 API Manager Scope-Role Mapping");
+                scopeRoleMappingPopulation.updateScopeRoleMappings();
                 scopeRoleMappingPopulation.populateScopeRoleMapping();
                 log.info("Migrated Successfully to API Manager 3.1");
                 log.info("Starting Migration from API Manager 3.1 to 3.2");
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom310.checkCrossTenantAPISubscriptions(tenantManager, ignoreCrossTenantSubscriptions);
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();
                 log.info("Migrated Successfully to 3.2");
@@ -137,6 +142,7 @@ public class APIMMigrationService implements ServerStartupObserver {
             } else if(V310.equals(migrateFromVersion) || V300.equals(migrateFromVersion)) {
                 MigrationClient migrateFrom310 = new MigrateFrom310(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom310.checkCrossTenantAPISubscriptions(tenantManager, ignoreCrossTenantSubscriptions);
                 migrateFrom310.registryResourceMigration();
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();

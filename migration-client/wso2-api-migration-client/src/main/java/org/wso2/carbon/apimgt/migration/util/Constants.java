@@ -46,6 +46,7 @@ public class Constants {
     // Migration client argument property names
     public static final String ARG_RUN_SPECIFIC_VERSION = "runSpecificVersion";
     public static final String ARG_MIGRATE_FROM_VERSION = "migrateFromVersion";
+    public static final String ARG_IGNORE_CROSS_TENANT_SUBSCRIPTIONS = "ignoreCrossTenantSubscriptions";
     public static final String ARG_OPTIONS = "options";
     public static final String ARG_COMPONENT = "component";
     public static final String ARG_MIGRATE_TENANTS = "tenants";
@@ -306,10 +307,20 @@ public class Constants {
     public static final String PUBLIC_STORE_VISIBILITY = "public";
     public static final String RESTRICTED_STORE_VISIBILITY = "restricted";
     public static final String PRIVATE_STORE_VISIBILITY = "private";
+    public static final String AUTH_APPLICATION_OR_USER_LEVEL_TOKEN = "Any";
+    public static final String API_DEFAULT_URI_TEMPLATE = "/*";
     public static final String API_OVERVIEW_VISIBILITY = "overview_visibility";
     public static final String API_OVERVIEW_VISIBLE_ROLES = "overview_visibleRoles";
     public static final String API_OVERVIEW_TYPE = "overview_type";
     public static final String API_OVERVIEW_ENABLE_STORE = "overview_enableStore";
+    public static final String API_OVERVIEW_NAME = "overview_name";
+    public static final String API_OVERVIEW_VERSION = "overview_version";
+    public static final String API_OVERVIEW_PROVIDER = "overview_provider";
+    public static final String API_OVERVIEW_CONTEXT = "overview_context";
+    public static final String[] HTTP_DEFAULT_METHODS = {"GET", "PUT", "POST", "DELETE", "PATCH"};
+    public static final String API_TYPE_SOAPTOREST = "SOAPTOREST";
+    public static final String API_TYPE_HTTP = "HTTP";
+    public static final String API_TYPE_WS = "WS";
 
     // User domain names
     public static final String USER_DOMAIN_INTERNAL = "Internal";

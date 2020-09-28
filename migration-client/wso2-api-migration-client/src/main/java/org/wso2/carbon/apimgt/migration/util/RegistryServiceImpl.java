@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.apimgt.migration.util;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.apimgt.api.APIManagementException;
@@ -27,7 +28,10 @@ import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
+import org.wso2.carbon.apimgt.impl.wsdl.util.SOAPOperationBindingUtils;
+import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.client.internal.ServiceHolder;
+import org.wso2.carbon.apimgt.migration.dao.APIMgtDAO;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.governance.api.exception.GovernanceException;
 import org.wso2.carbon.governance.api.generic.GenericArtifactManager;
@@ -411,13 +415,30 @@ public class RegistryServiceImpl implements RegistryService {
             GenericArtifactManager artifactManager = APIUtil.getArtifactManager(registry, APIConstants.API_KEY);
             boolean isResourceUpdated = false;
             String overview_type = artifact.getAttribute(Constants.API_OVERVIEW_TYPE);
+            if (SOAPOperationBindingUtils.isSOAPToRESTApi(artifact.getAttribute(Constants.API_OVERVIEW_NAME),
+                    artifact.getAttribute(Constants.API_OVERVIEW_VERSION),
+                    artifact.getAttribute(Constants.API_OVERVIEW_PROVIDER))) {
+                if (log.isDebugEnabled()) {
+                    log.debug("API at " + resourcePath + "is a SOAPTOREST API, hence adding the overview_type" +
+                            " as SOAPTOREST for that API resource.");
+                }
+                overview_type = Constants.API_TYPE_SOAPTOREST;
+                artifact.setAttribute(Constants.API_OVERVIEW_TYPE, overview_type);
+                isResourceUpdated = true;
+            }
             if (overview_type == null || overview_type.trim().isEmpty()){
                 if (log.isDebugEnabled()) {
                     log.debug("API at " + resourcePath + "did not have property : " + Constants.API_OVERVIEW_TYPE
                             + ", hence adding the default value - HTTP for that API resource.");
                 }
-                artifact.setAttribute(Constants.API_OVERVIEW_TYPE, "HTTP");
+                artifact.setAttribute(Constants.API_OVERVIEW_TYPE, Constants.API_TYPE_HTTP);
                 isResourceUpdated = true;
+            }
+            // Add URI Templates for WS APIs, otherwise cannot invoke those after the migration
+            if (StringUtils.equals(overview_type, Constants.API_TYPE_WS)) {
+                int id = Integer.parseInt(APIMgtDAO.getInstance().getAPIID(
+                        artifact.getAttribute(Constants.API_OVERVIEW_CONTEXT)));
+                APIMgtDAO.getInstance().addURLTemplatesForWSAPIs(id);
             }
             if (isResourceUpdated) {
                 artifactManager.updateGenericArtifact(artifact);
@@ -426,6 +447,8 @@ public class RegistryServiceImpl implements RegistryService {
             log.error("Error occurred when updating GenericArtifacts in registry", e);
         } catch (APIManagementException e) {
             log.error("Error occurred when getting artifact manager", e);
+        } catch (APIMigrationException e) {
+            log.error("Error occurred when getting apiId", e);
         }
     }
 

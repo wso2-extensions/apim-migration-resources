@@ -44,6 +44,12 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.wso2.carbon.user.api.Tenant;
+import org.wso2.carbon.user.api.UserStoreException;
+import org.wso2.carbon.user.core.tenant.TenantManager;
+import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
+import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
+
 public class APIMgtDAO {
     private static final Log log = LogFactory.getLog(APIMgtDAO.class);
     private static APIMgtDAO INSTANCE = null;
@@ -91,6 +97,17 @@ public class APIMgtDAO {
             "WHERE AMA.TOKEN_TYPE = 'JWT' AND PROPERTY_KEY = 'tokenType' AND TENANT_ID = ?";
     private static String UPDATE_TOKEN_TYPE_TO_JWT = "UPDATE IDN_OIDC_PROPERTY SET" +
             " PROPERTY_VALUE = ? WHERE PROPERTY_KEY  = 'tokenType' AND CONSUMER_KEY = ?";
+    private static String INSERT_URL_MAPPINGS_FOR_WS_APIS =
+            "INSERT INTO AM_API_URL_MAPPING (API_ID,HTTP_METHOD,AUTH_SCHEME,URL_PATTERN) VALUES (?,?,?,?)";
+
+    private static String CROSS_TENANT_API_SUBSCRIPTIONS =
+            "SELECT AM_API.API_PROVIDER AS API_PROVIDER, AM_SUBSCRIBER.TENANT_ID AS SUBSCRIBER_TENANT_ID " +
+                    "FROM " +
+                    "AM_API, AM_SUBSCRIPTION, AM_APPLICATION, AM_SUBSCRIBER " +
+                    "WHERE " +
+                    "AM_SUBSCRIPTION.API_ID = AM_API.API_ID AND " +
+                    "AM_APPLICATION.APPLICATION_ID = AM_SUBSCRIPTION.APPLICATION_ID AND " +
+                    "AM_SUBSCRIBER.SUBSCRIBER_ID = AM_APPLICATION.SUBSCRIBER_ID";
 
     private APIMgtDAO() {
     }
@@ -225,6 +242,10 @@ public class APIMgtDAO {
                 preparedStatement.setInt(1, newScopeId);
                 preparedStatement.setInt(2, scopeId);
                 preparedStatement.executeUpdate();
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_SCOPE_ID_IN_RESOURCE), e);
             }
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_SCOPE_ID_IN_RESOURCE), e);
@@ -337,6 +358,7 @@ public class APIMgtDAO {
     public void addDataToResourceScopeMapping(List<AMAPIResourceScopeMappingDTO> resourceScopeMappingDTOS)
             throws APIMigrationException {
         try (Connection conn = APIMgtDBUtil.getConnection()) {
+            conn.setAutoCommit(false);
             try (PreparedStatement psAddResourceScope =
                          conn.prepareStatement(INSERT_INTO_AM_API_RESOURCE_SCOPE_MAPPING)) {
                 for (AMAPIResourceScopeMappingDTO resourceScopeMappingDTO : resourceScopeMappingDTOS) {
@@ -346,6 +368,10 @@ public class APIMgtDAO {
                     psAddResourceScope.addBatch();
                 }
                 psAddResourceScope.executeBatch();
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw new APIMigrationException("Failed to add data to AM_API_RESOURCE_SCOPE_MAPPING table : ", ex);
             }
         } catch (SQLException ex) {
             throw new APIMigrationException("Failed to add data to AM_API_RESOURCE_SCOPE_MAPPING table : ", ex);
@@ -417,10 +443,85 @@ public class APIMgtDAO {
                 preparedStatement.setString(1, "JWT");
                 preparedStatement.setString(2, consumerKey);
                 preparedStatement.executeUpdate();
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_TOKEN_TYPE_TO_JWT), e);
             }
-
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_TOKEN_TYPE_TO_JWT), e);
         }
+    }
+
+    /**
+     * This method is used to insert data to add default URL Mappings of WS APIs
+     * @param apiId
+     * @throws APIMigrationException
+     */
+    public void addURLTemplatesForWSAPIs(int apiId) throws APIMigrationException {
+        if (apiId == -1) {
+            return;
+        }
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(INSERT_URL_MAPPINGS_FOR_WS_APIS)) {
+                for (String httpVerb: Constants.HTTP_DEFAULT_METHODS) {
+                    ps.setInt(1, apiId);
+                    ps.setString(2, httpVerb);
+                    ps.setString(3, Constants.AUTH_APPLICATION_OR_USER_LEVEL_TOKEN);
+                    ps.setString(4, Constants.API_DEFAULT_URI_TEMPLATE);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw new APIMigrationException("Error while adding URL template(s) to the database " + e);
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("Error while adding URL template(s) to the database " + e);
+        }
+    }
+
+    /**
+     * This method is used to check the existence of cross tenant subscriptions
+     *
+     * @param tenantManager Tenant Manager
+     * @return <code>true</code> if cross tenant subscriptions exist and
+     * <code>false</code> otherwise
+     * @throws APIMigrationException
+     */
+    public boolean isCrossTenantAPISubscriptionsExist(TenantManager tenantManager) throws APIMigrationException {
+        try (Connection connection = APIMgtDBUtil.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement preparedStatement = connection.prepareStatement(CROSS_TENANT_API_SUBSCRIPTIONS)) {
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    connection.commit();
+                    while (resultSet.next()) {
+                        int subscriberTenantId = resultSet.getInt("SUBSCRIBER_TENANT_ID");
+                        String apiProvider = resultSet.getString("API_PROVIDER");
+                        String apiProviderTenantDomain = MultitenantUtils.getTenantDomain(apiProvider);
+
+                        String subscriberTenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+                        for (Tenant tenant : tenantManager.getAllTenants()) {
+                            if (subscriberTenantId == tenant.getId()) {
+                                subscriberTenantDomain = tenant.getDomain();
+                                break;
+                            }
+                        }
+
+                        if (!subscriberTenantDomain.equals(apiProviderTenantDomain)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(CROSS_TENANT_API_SUBSCRIPTIONS), e);
+        } catch (UserStoreException e) {
+            throw new APIMigrationException("Exception when retrieving tenants", e);
+        }
+        return false;
     }
 }
