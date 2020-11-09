@@ -7,6 +7,11 @@ public class APIInfoDTO {
     private String apiContext;
     private String apiVersion;
     private String getApiContextTemplate;
+    private String uuid;
+
+    public String getUuid() { return uuid; }
+
+    public void setUuid(String uuid) { this.uuid = uuid; }
 
     public int getApiId() {
         return apiId;

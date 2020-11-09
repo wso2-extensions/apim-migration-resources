@@ -85,6 +85,9 @@ public class APIMMigrationService implements ServerStartupObserver {
         try {
             RegistryServiceImpl registryService = new RegistryServiceImpl();
             TenantManager tenantManager = ServiceHolder.getRealmService().getTenantManager();
+            MigrateUUIDToDB commonMigrationClient = new MigrateUUIDToDB(tenants, blackListTenants, tenantRange,
+                    registryService, tenantManager);
+            commonMigrationClient.moveUUIDToDBFromRegistry();
             //Check SP-Migration enabled
             if (isSPMigration) {
                 log.info("----------------Migrating to WSO2 API Manager analytics 3.2.0");

@@ -20,13 +20,9 @@ package org.wso2.carbon.apimgt.migration.dao;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.dto.ResourceScopeInfoDTO;
-import org.wso2.carbon.apimgt.migration.dto.ResourceScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.dto.ScopeInfoDTO;
 import org.wso2.carbon.apimgt.migration.dto.APIURLMappingInfoDTO;
 import org.wso2.carbon.apimgt.migration.dto.APIInfoDTO;
@@ -35,8 +31,7 @@ import org.wso2.carbon.apimgt.migration.dto.APIScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.dto.AMAPIResourceScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.util.Constants;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -97,8 +92,11 @@ public class APIMgtDAO {
             "WHERE AMA.TOKEN_TYPE = 'JWT' AND PROPERTY_KEY = 'tokenType' AND TENANT_ID = ?";
     private static String UPDATE_TOKEN_TYPE_TO_JWT = "UPDATE IDN_OIDC_PROPERTY SET" +
             " PROPERTY_VALUE = ? WHERE PROPERTY_KEY  = 'tokenType' AND CONSUMER_KEY = ?";
+    private static String UPDATE_UUID_BY_THE_IDENTIFIER = "UPDATE AM_API SET API_UUID = ? WHERE API_PROVIDER = ? " +
+            "AND API_NAME = ? AND API_VERSION = ? ";
     private static String INSERT_URL_MAPPINGS_FOR_WS_APIS =
             "INSERT INTO AM_API_URL_MAPPING (API_ID,HTTP_METHOD,AUTH_SCHEME,URL_PATTERN) VALUES (?,?,?,?)";
+    private static String GET_ALL_API_IDENTIFIERS = "SELECT API_PROVIDER, API_NAME, API_VERSION FROM AM_API";
 
     private static String CROSS_TENANT_API_SUBSCRIPTIONS =
             "SELECT AM_API.API_PROVIDER AS API_PROVIDER, AM_SUBSCRIBER.TENANT_ID AS SUBSCRIBER_TENANT_ID " +
@@ -523,5 +521,35 @@ public class APIMgtDAO {
             throw new APIMigrationException("Exception when retrieving tenants", e);
         }
         return false;
+    }
+
+    /**
+     * This method is used to set the UUID in the DB using Api details
+     *
+     * @param apiInfoDTOS API Information list
+     * @throws APIMigrationException
+     */
+    public void updateUUID(List<APIInfoDTO> apiInfoDTOS) throws APIMigrationException {
+
+        try (Connection connection = APIMgtDBUtil.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_UUID_BY_THE_IDENTIFIER)){
+                for(APIInfoDTO apiInfoDTO : apiInfoDTOS){
+                    preparedStatement.setString(1, apiInfoDTO.getUuid());
+                    preparedStatement.setString(2, apiInfoDTO.getApiProvider());
+                    preparedStatement.setString(3, apiInfoDTO.getApiName());
+                    preparedStatement.setString(4, apiInfoDTO.getApiVersion());
+                    preparedStatement.addBatch();
+                }
+                preparedStatement.executeBatch();
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_UUID_BY_THE_IDENTIFIER),
+                        e);
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_UUID_BY_THE_IDENTIFIER), e);
+        }
     }
 }
