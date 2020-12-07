@@ -16,11 +16,18 @@
 
 package org.wso2.carbon.apimgt.migration.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.json.simple.JSONObject;
+import org.wso2.carbon.apimgt.api.APIManagementException;
+import org.wso2.carbon.apimgt.impl.APIConstants;
+import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationException;
 import org.wso2.carbon.apimgt.migration.util.RegistryService;
+import org.wso2.carbon.user.api.Tenant;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.tenant.TenantManager;
 
@@ -47,6 +54,7 @@ public class MigrateFrom200 extends MigrationClientBase implements MigrationClie
         rxtMigration(registryService);
         updateGenericAPIArtifacts(registryService);
         migrateFaultSequencesInRegistry(registryService);
+        addDefaultRoleCreationConfig();
     }
 
     @Override
@@ -95,5 +103,51 @@ public class MigrateFrom200 extends MigrationClientBase implements MigrationClie
     @Override
     public void checkCrossTenantAPISubscriptions(TenantManager tenantManager, boolean ignoreCrossTenantSubscriptions)
             throws APIMigrationException {
+    }
+
+    public void addDefaultRoleCreationConfig() throws APIMigrationException {
+        log.info("Add config in tenant-conf.json to enable default roles creation.");
+        for (Tenant tenant : getTenantsArray()) {
+            try {
+                registryService.startTenantFlow(tenant);
+                log.info("Updating tenant-conf.json of tenant " + tenant.getId() + '(' +
+                        tenant.getDomain() + ')');
+                // Retrieve the tenant-conf.json of the corresponding tenant
+                JSONObject tenantConf = APIUtil.getTenantConfig(tenant.getDomain());
+                if (tenantConf.get(APIConstants.API_TENANT_CONF_DEFAULT_ROLES) == null) {
+                    JSONObject defaultRoleConfig = new JSONObject();
+                    JSONObject publisherRole = new JSONObject();
+                    publisherRole.put("CreateOnTenantLoad", true);
+                    publisherRole.put("RoleName", "Internal/publisher");
+
+                    JSONObject creatorRole = new JSONObject();
+                    creatorRole.put("CreateOnTenantLoad", true);
+                    creatorRole.put("RoleName", "Internal/creator");
+
+                    JSONObject subscriberRole = new JSONObject();
+                    subscriberRole.put("CreateOnTenantLoad", true);
+
+                    defaultRoleConfig.put("PublisherRole", publisherRole);
+                    defaultRoleConfig.put("CreatorRole", creatorRole);
+                    defaultRoleConfig.put("SubscriberRole", subscriberRole);
+                    tenantConf.put("DefaultRoles", defaultRoleConfig);
+                    ObjectMapper mapper = new ObjectMapper();
+                    String formattedTenantConf = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tenantConf);
+
+                    APIUtil.updateTenantConf(formattedTenantConf, tenant.getDomain());
+                    log.info("Updated tenant-conf.json for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')'
+                            + "\n" + formattedTenantConf);
+
+                    log.info("End updating tenant-conf.json to add default role creation configuration for tenant "
+                            + tenant.getId() + '(' + tenant.getDomain() + ')');
+                }
+            } catch (APIManagementException e) {
+                log.error("Error while retrieving the tenant-conf.json of tenant " + tenant.getId(), e);
+            } catch (JsonProcessingException e) {
+                log.error("Error while formatting tenant-conf.json of tenant " + tenant.getId(), e);
+            } finally {
+                registryService.endTenantFlow();
+            }
+        }
     }
 }
