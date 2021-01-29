@@ -105,7 +105,8 @@ public class APIMMigrationService implements ServerStartupObserver {
                 log.info("Migrating WSO2 API Manager registry resources");
                 migrateFrom200.registryResourceMigration();
 
-                MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
+                MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants,
+                        blackListTenants, tenantRange, registryService, tenantManager);
                 log.info("Populating WSO2 API Manager Scope-Role Mapping");
                 scopeRoleMappingPopulation.populateScopeRoleMapping();
             } else if (V210.equals(migrateFromVersion) || V220.equals(migrateFromVersion) ||
@@ -114,11 +115,13 @@ public class APIMMigrationService implements ServerStartupObserver {
                 log.info("Migrating WSO2 API Manager registry resources");
                 migrateFrom210.registryResourceMigration();
 
-                MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
+                MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants,
+                        blackListTenants, tenantRange, registryService, tenantManager);
                 log.info("Populating WSO2 API Manager Scope-Role Mapping");
                 scopeRoleMappingPopulation.populateScopeRoleMapping();
             } else if (isScopeRoleMappingPopulation) {
-                MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
+                MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants,
+                        blackListTenants, tenantRange, registryService, tenantManager);
                 log.info("Populating WSO2 API Manager Scope-Role Mapping");
                 scopeRoleMappingPopulation.populateScopeRoleMapping();
             } else {
