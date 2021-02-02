@@ -247,7 +247,7 @@ public class DBManagerImpl implements DBManager {
                     //Get apiCreatorTenantDomain from Context
                     if (context.contains(TENANT_DOMAIN_IDENTIFIER)) {
                         apiCreatorTenantDomain = apiPublisher.substring(apiPublisher.lastIndexOf(AT_IDENTIFIER) + 1,
-                                apiPublisher.length() - 1);
+                                apiPublisher.length());
                     } else {
                         apiCreatorTenantDomain = SUPER_TENANT_DOMAIN;
                     }
