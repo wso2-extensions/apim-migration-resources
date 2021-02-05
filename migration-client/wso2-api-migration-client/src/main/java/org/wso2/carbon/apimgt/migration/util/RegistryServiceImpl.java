@@ -426,7 +426,7 @@ public class RegistryServiceImpl implements RegistryService {
                 artifact.setAttribute(Constants.API_OVERVIEW_TYPE, overview_type);
                 isResourceUpdated = true;
             }
-            if (overview_type == null || overview_type.trim().isEmpty()){
+            if (overview_type.trim().isEmpty() || "NULL".equalsIgnoreCase(overview_type))  {
                 if (log.isDebugEnabled()) {
                     log.debug("API at " + resourcePath + "did not have property : " + Constants.API_OVERVIEW_TYPE
                             + ", hence adding the default value - HTTP for that API resource.");
