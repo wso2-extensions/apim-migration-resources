@@ -14,6 +14,9 @@
 * limitations under the License.
 */
 
+/*
+Commenting out due to not used since 4.0
+
 package org.wso2.carbon.apimgt.migration.client;
 
 
@@ -147,6 +150,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @param options list of command line options
      * @throws APIMigrationException throws if any exception occured
      */
+/*
     @Override
     public void tierMigration(List<String> options) throws APIMigrationException {
         log.info("Advanced throttling migration for API Manager started");
@@ -308,6 +312,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      *
      * @throws APIMigrationException
      */
+/*
     private void updateAPAIArtifacts() throws APIMigrationException {
         log.info("Updating API artifacts for API Manager started.");
 
@@ -360,6 +365,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      *
      * @throws APIMigrationException
      */
+/*
     private void rxtMigration() throws APIMigrationException {
         log.info("Rxt migration for API Manager started.");
 
@@ -440,6 +446,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * Migrates swagger documentation to be compatible with APIM 2.0.0
      * @throws APIMigrationException
      */
+/*
     private void swaggerResourceMigration() throws APIMigrationException {
         log.info("Swagger migration for API Manager " + Constants.VERSION_2_0_0 + " started.");
 
@@ -473,6 +480,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @param tenant tenant
      * @throws APIMigrationException
      */
+/*
     private void updateSwaggerResources(GenericArtifact[] artifacts, Tenant tenant) throws APIMigrationException {
         log.info("Updating Swagger definition for tenant " + tenant.getId() + '(' + tenant.getDomain() + ')');
         for (GenericArtifact artifact : artifacts) {
@@ -525,7 +533,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @throws org.json.simple.parser.ParseException
      * @throws org.wso2.carbon.registry.core.exceptions.RegistryException
      */
-
+/*
     private String getMigratedSwaggerDefinition(Tenant tenant, String swaggerlocation, API api)
             throws MalformedURLException, ParseException, RegistryException, UserStoreException {
         JSONParser parser = new JSONParser();
@@ -612,6 +620,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @param tenant
      * @throws APIMigrationException
      */
+/*
     private void readThrottlingTiersFromRegistry(Tenant tenant, boolean deployPolicies) throws APIMigrationException  {
         registryService.startTenantFlow(tenant);
         try {
@@ -640,6 +649,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @throws APIMigrationException
      * @throws APIManagementException
      */
+/*
     private void readTiersAndDeploy(Tenant tenant, String tierFile,
                                     String tierType, boolean deployPolicies) throws APIMigrationException,
             APIManagementException {
@@ -717,6 +727,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @throws APIManagementException
      * @throws APIMigrationException
      */
+/*
     private static void deployAppThrottlePolicies(Policy policy, Tenant tenant, boolean deployPolicies)
             throws APIManagementException, APIMigrationException {
         log.info("Migrating Application throttle policies for " + tenant.getId() + '(' + tenant.getDomain()
@@ -787,6 +798,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @throws APIManagementException
      * @throws APIMigrationException
      */
+/*
     private static void deployResourceThrottlePolicies(Policy policy, Tenant tenant, boolean deployPolicies)
             throws APIManagementException, APIMigrationException {
         log.info("Migrating Resource throttle policies for " + tenant.getId() + '(' + tenant.getDomain()
@@ -857,6 +869,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @throws APIManagementException
      * @throws APIMigrationException
      */
+/*
     private static void deploySubscriptionThrottlePolicies(Policy policy, Tenant tenant, boolean deployPolicies)
             throws APIManagementException, APIMigrationException {
         log.info("Migrating Subscription throttle policies for " + tenant.getId() + '(' + tenant.getDomain()
@@ -928,6 +941,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @param tierNode
      * @return
      */
+/*
     private Policy readPolicyFromRegistry(Node tierNode) {
         Element tierTag = (Element) tierNode;
 
@@ -1031,6 +1045,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @param policy     Policy string to be deployed.
      * @throws APIManagementException
      */
+/*
     private static void deployPolicyToGlobalCEP(String policy) throws APIManagementException {
         try {
             if (globalThrottleEngineClient == null) {
@@ -1046,6 +1061,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
     /**
      *This method will be used to populate SP_APP table
      */
+/*
     public void populateSPAPPs() throws APIMigrationException {
 
     }
@@ -1066,6 +1082,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @return no of rows affected by update
      * @throws APIManagementException
      */
+    /*
     private int updatePolicyNameInDB(String oldPolicyName, String modifiedPolicyName, String tierType)
             throws APIManagementException {
         Connection connection = null;
@@ -1105,6 +1122,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @param tierName  tier name
      * @return
      */
+/*
     private List<APIIdentifier> getAPIsToBeModified(String tierName) throws APIManagementException {
         Connection connection = null;
         PreparedStatement prepStmt = null;
@@ -1142,6 +1160,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @param oldTierName
      * @param modifiedTierName
      */
+/*
     private void updateXThrottlingTiersInSwaggerDefinition(String oldTierName, String modifiedTierName) throws APIManagementException {
         List<APIIdentifier> apiList = getAPIsToBeModified(oldTierName);
         try {
@@ -1176,6 +1195,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * This method modifies overview_tier filed in api rxt to not contain spaces in tierName
      * @throws APIManagementException
      */
+/*
     private void modifySubscriptionPolicyNamesInApiRXT() throws APIManagementException {
         GenericArtifact[] genericArtifacts = registryService.getGenericAPIArtifacts();
         GenericArtifact[] modifiedArtifacts = new GenericArtifact[genericArtifacts.length];
@@ -1215,6 +1235,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
      * @param fileLocation          registry path of the file to be modified
      * @throws APIManagementException
      */
+/*
     private void updatePolicyNameInRegistryFile(String oldPolicyName, String modifiedPolicyName, String fileLocation)
             throws APIManagementException {
         try {
@@ -1237,4 +1258,7 @@ public class MigrateFrom110to200 extends MigrationClientBase implements Migratio
     public void checkCrossTenantAPISubscriptions(TenantManager tenantManager, boolean ignoreCrossTenantSubscriptions)
             throws APIMigrationException {
     }
+
 }
+*/
+

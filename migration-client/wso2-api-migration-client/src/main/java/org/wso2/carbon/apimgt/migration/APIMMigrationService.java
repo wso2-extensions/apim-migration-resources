@@ -44,6 +44,7 @@ public class APIMMigrationService implements ServerStartupObserver {
     private final String V260 = "2.6.0";
     private final String V310 = "3.1.0";
     private final String V300 = "3.0.0";
+    private final String V320 = "3.2.0";
 
     @Override
     public void completingServerStartup() {
@@ -149,6 +150,9 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom310.registryResourceMigration();
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();
+            } else if (V320.equals(migrateFromVersion)) {
+                MigrationClient migrateFrom320 = new MigrateFrom310(tenants, blackListTenants,
+                        tenantRange, registryService, tenantManager);
             } else {
                 MigrationClientFactory.initFactory(tenants, blackListTenants, tenantRange, registryService, tenantManager,
                         removeDecryptionFailedKeysFromDB);

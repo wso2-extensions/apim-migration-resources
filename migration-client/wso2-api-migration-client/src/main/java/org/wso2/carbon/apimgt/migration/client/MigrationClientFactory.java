@@ -48,9 +48,9 @@ public final class MigrationClientFactory {
                 registryService, tenantManager, removeDecryptionFailedKeysFromDB);
         registerClient(version_1_9_x, migrateFrom19to110, version_1_10_x);
 
-        MigrationClient migrateFrom1100to200 = new MigrateFrom110to200(tenants, blackListTenants, tenantRange,
-                registryService, tenantManager, removeDecryptionFailedKeysFromDB);
-        registerClient(version_1_10_x, migrateFrom1100to200, version_2_0_x);
+//        MigrationClient migrateFrom1100to200 = new MigrateFrom110to200(tenants, blackListTenants, tenantRange,
+//                registryService, tenantManager, removeDecryptionFailedKeysFromDB);
+//        registerClient(version_1_10_x, migrateFrom1100to200, version_2_0_x);
         MigrationClient migrateFrom200to210 = new MigrateFrom200to210(tenants, blackListTenants,tenantRange,
                 registryService, tenantManager);
         registerClient(version_2_0_x, migrateFrom200to210, version_2_1_x);
