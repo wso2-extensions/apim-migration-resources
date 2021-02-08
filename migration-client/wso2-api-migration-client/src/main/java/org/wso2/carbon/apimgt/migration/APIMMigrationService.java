@@ -88,7 +88,6 @@ public class APIMMigrationService implements ServerStartupObserver {
             TenantManager tenantManager = ServiceHolder.getRealmService().getTenantManager();
             MigrateUUIDToDB commonMigrationClient = new MigrateUUIDToDB(tenants, blackListTenants, tenantRange,
                     registryService, tenantManager);
-            commonMigrationClient.moveUUIDToDBFromRegistry();
             //Check SP-Migration enabled
             if (isSPMigration) {
                 log.info("----------------Migrating to WSO2 API Manager analytics 3.2.0");
@@ -122,6 +121,14 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom310.checkCrossTenantAPISubscriptions(tenantManager, ignoreCrossTenantSubscriptions);
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();
+                log.info("Migrated Successfully to 3.2");
+                log.info("Starting Migration from API Manager 3.2 to 4.0");
+                commonMigrationClient.moveUUIDToDBFromRegistry();
+                MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
+                        tenantRange, registryService, tenantManager);
+                migrateFrom320.updateRegistryPathsOfIconAndWSDL();
+                migrateFrom320.apiRevisionRelatedMigration();
+                log.info("Migrated Successfully to 4.0");
             } else if (V210.equals(migrateFromVersion) || V220.equals(migrateFromVersion) ||
                     V250.equals(migrateFromVersion) || V260.equals(migrateFromVersion)) {
                 MigrationClient migrateFrom210 = new MigrateFrom210(tenants, blackListTenants, tenantRange, registryService, tenantManager);
@@ -139,6 +146,13 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();
                 log.info("Migrated Successfully to 3.2");
+                log.info("Starting Migration from API Manager 3.2 to 4.0");
+                commonMigrationClient.moveUUIDToDBFromRegistry();
+                MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
+                        tenantRange, registryService, tenantManager);
+                migrateFrom320.updateRegistryPathsOfIconAndWSDL();
+                migrateFrom320.apiRevisionRelatedMigration();
+                log.info("Migrated Successfully to 4.0");
             } else if (isScopeRoleMappingPopulation) {
                 MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
                 log.info("Populating WSO2 API Manager Scope-Role Mapping");
@@ -150,9 +164,20 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom310.registryResourceMigration();
                 migrateFrom310.scopeMigration();
                 migrateFrom310.spMigration();
-            } else if (V320.equals(migrateFromVersion)) {
-                MigrationClient migrateFrom320 = new MigrateFrom310(tenants, blackListTenants,
+                log.info("Migrated Successfully to 3.2");
+                log.info("Starting Migration from API Manager 3.2 to 4.0");
+                commonMigrationClient.moveUUIDToDBFromRegistry();
+                MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom320.updateRegistryPathsOfIconAndWSDL();
+                migrateFrom320.apiRevisionRelatedMigration();
+                log.info("Migrated Successfully to 4.0");
+            } else if (V320.equals(migrateFromVersion)) {
+                commonMigrationClient.moveUUIDToDBFromRegistry();
+                MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
+                        tenantRange, registryService, tenantManager);
+                migrateFrom320.updateRegistryPathsOfIconAndWSDL();
+                migrateFrom320.apiRevisionRelatedMigration();
             } else {
                 MigrationClientFactory.initFactory(tenants, blackListTenants, tenantRange, registryService, tenantManager,
                         removeDecryptionFailedKeysFromDB);
