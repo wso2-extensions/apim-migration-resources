@@ -133,8 +133,7 @@ public class DBManagerImpl implements DBManager {
                 String time = resultSetRetrieved.getString("time");
                 //Get apiCreatorTenantDomain from Context
                 if (context.contains(TENANT_DOMAIN_IDENTIFIER)) {
-                    apiCreatorTenantDomain = apiPublisher.substring(apiPublisher.lastIndexOf(AT_IDENTIFIER) + 1,
-                            apiPublisher.length());
+                    apiCreatorTenantDomain = apiPublisher.substring(apiPublisher.lastIndexOf(AT_IDENTIFIER) + 1);
                 } else {
                     apiCreatorTenantDomain = SUPER_TENANT_DOMAIN;
                 }
@@ -246,8 +245,7 @@ public class DBManagerImpl implements DBManager {
                     String context = resultSetRetrieved.getString("context");
                     //Get apiCreatorTenantDomain from Context
                     if (context.contains(TENANT_DOMAIN_IDENTIFIER)) {
-                        apiCreatorTenantDomain = apiPublisher.substring(apiPublisher.lastIndexOf(AT_IDENTIFIER) + 1,
-                                apiPublisher.length() - 1);
+                        apiCreatorTenantDomain = apiPublisher.substring(apiPublisher.lastIndexOf(AT_IDENTIFIER) + 1);
                     } else {
                         apiCreatorTenantDomain = SUPER_TENANT_DOMAIN;
                     }
@@ -406,8 +404,7 @@ public class DBManagerImpl implements DBManager {
                 }
 
                 if (context.contains(TENANT_DOMAIN_IDENTIFIER)) {
-                    apiCreatorTenantDomain = apiPublisher.substring(apiPublisher.lastIndexOf(AT_IDENTIFIER) + 1,
-                            apiPublisher.length());
+                    apiCreatorTenantDomain = apiPublisher.substring(apiPublisher.lastIndexOf(AT_IDENTIFIER) + 1);
                 } else {
                     apiCreatorTenantDomain = SUPER_TENANT_DOMAIN;
                 }
@@ -608,8 +605,7 @@ public class DBManagerImpl implements DBManager {
                 }
 
                 if (context.contains(TENANT_DOMAIN_IDENTIFIER)) {
-                    apiCreatorTenantDomain = apiPublisher.substring(apiPublisher.lastIndexOf(AT_IDENTIFIER) + 1,
-                            apiPublisher.length());
+                    apiCreatorTenantDomain = apiPublisher.substring(apiPublisher.lastIndexOf(AT_IDENTIFIER) + 1);
                 } else {
                     apiCreatorTenantDomain = SUPER_TENANT_DOMAIN;
                 }
@@ -1262,8 +1258,7 @@ public class DBManagerImpl implements DBManager {
                 String context = resultSetRetrieved.getString("context");
                 //Set ApiCreater Tenant Domain
                 if (context.contains(TENANT_DOMAIN_IDENTIFIER)) {
-                    apiCreatorTenantDomain = apiPublisher.substring(apiPublisher.lastIndexOf(AT_IDENTIFIER) + 1,
-                            apiPublisher.length());
+                    apiCreatorTenantDomain = apiPublisher.substring(apiPublisher.lastIndexOf(AT_IDENTIFIER) + 1);
                 } else {
                     apiCreatorTenantDomain = SUPER_TENANT_DOMAIN;
                 }
