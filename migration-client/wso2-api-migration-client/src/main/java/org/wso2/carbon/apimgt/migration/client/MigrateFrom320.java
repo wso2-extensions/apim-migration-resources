@@ -20,17 +20,40 @@ package org.wso2.carbon.apimgt.migration.client;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.apimgt.api.APIManagementException;
+import org.wso2.carbon.apimgt.api.model.API;
+import org.wso2.carbon.apimgt.api.APIProvider;
+import org.wso2.carbon.apimgt.api.model.APIRevision;
+import org.wso2.carbon.apimgt.api.model.APIRevisionDeployment;
+import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
+import org.wso2.carbon.apimgt.impl.APIManagerFactory;
+import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationException;
 import org.wso2.carbon.apimgt.migration.dao.APIMgtDAO;
 import org.wso2.carbon.apimgt.migration.dto.*;
 import org.wso2.carbon.apimgt.migration.util.RegistryService;
+import org.wso2.carbon.apimgt.persistence.APIConstants;
+import org.wso2.carbon.apimgt.persistence.utils.RegistryPersistenceUtil;
+import org.wso2.carbon.apimgt.persistence.exceptions.APIPersistenceException;
 import org.wso2.carbon.governance.api.exception.GovernanceException;
 import org.wso2.carbon.governance.api.generic.dataobjects.GenericArtifact;
+import org.wso2.carbon.governance.api.util.GovernanceUtils;
+import org.wso2.carbon.governance.api.generic.GenericArtifactManager;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
 import org.wso2.carbon.user.api.Tenant;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.tenant.TenantManager;
+import org.wso2.carbon.registry.core.Resource;
+import org.wso2.carbon.registry.core.RegistryConstants;
+import org.wso2.carbon.registry.core.Registry;
+import org.wso2.carbon.registry.core.exceptions.RegistryException;
+import org.wso2.carbon.registry.core.utils.RegistryUtils;
+import org.wso2.carbon.registry.core.config.RegistryContext;
+import org.wso2.carbon.context.CarbonContext;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
+import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
+import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -46,11 +69,15 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
     private static final String TENANT_IDENTIFIER = "t";
     private static final String APPLICATION_ROLE_PREFIX = "Application/";
     private RegistryService registryService;
+    protected Registry registry;
+    private TenantManager tenantManager;
+    APIMgtDAO apiMgtDAO = APIMgtDAO.getInstance();
 
     public MigrateFrom320(String tenantArguments, String blackListTenantArguments, String tenantRange,
                           RegistryService registryService, TenantManager tenantManager) throws UserStoreException {
         super(tenantArguments, blackListTenantArguments, tenantRange, tenantManager);
         this.registryService = registryService;
+        this.tenantManager = tenantManager;
     }
 
     @Override
@@ -104,5 +131,160 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
     @Override
     public void checkCrossTenantAPISubscriptions(TenantManager tenantManager, boolean ignoreCrossTenantSubscriptions)
             throws APIMigrationException {
+    }
+
+    public void updateRegistryPathsOfIconAndWSDL() throws APIMigrationException {
+        try {
+            List<Tenant> tenants = APIUtil.getAllTenantsWithSuperTenant();
+            for (Tenant tenant : tenants) {
+                List<APIInfoDTO> apiInfoDTOList = new ArrayList<>();
+                int apiTenantId = tenantManager.getTenantId(tenant.getDomain());
+                APIUtil.loadTenantRegistry(apiTenantId);
+                startTenantFlow(tenant.getDomain(), apiTenantId,
+                        MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())));
+                this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceUserRegistry(
+                        MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())),
+                        apiTenantId);
+                GenericArtifactManager tenantArtifactManager = APIUtil.getArtifactManager(this.registry,
+                        APIConstants.API_KEY);
+                GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
+                for (GenericArtifact artifact : tenantArtifacts) {
+                    API api = APIUtil.getAPI(artifact);
+                    if (api != null) {
+                        APIInfoDTO apiInfoDTO = new APIInfoDTO();
+                        apiInfoDTO.setUuid(api.getUUID());
+                        apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
+                        apiInfoDTO.setApiName(api.getId().getApiName());
+                        apiInfoDTO.setApiVersion(api.getId().getVersion());
+                        apiInfoDTOList.add(apiInfoDTO);
+                    }
+                }
+                for (APIInfoDTO apiInfoDTO : apiInfoDTOList) {
+                    String apiPath = GovernanceUtils.getArtifactPath(registry, apiInfoDTO.getUuid());
+                    int prependIndex = apiPath.lastIndexOf("/api");
+                    String artifactPath = apiPath.substring(0, prependIndex);
+                    String artifactOldPathIcon = APIConstants.API_IMAGE_LOCATION + RegistryConstants.PATH_SEPARATOR
+                            + apiInfoDTO.getApiProvider() + RegistryConstants.PATH_SEPARATOR + apiInfoDTO.getApiName()
+                            + RegistryConstants.PATH_SEPARATOR + apiInfoDTO.getApiVersion()
+                            + RegistryConstants.PATH_SEPARATOR + APIConstants.API_ICON_IMAGE;
+                    if (registry.resourceExists(artifactOldPathIcon)) {
+                        Resource resource = registry.get(artifactOldPathIcon);
+                        String thumbPath = artifactPath + RegistryConstants.PATH_SEPARATOR
+                                + APIConstants.API_ICON_IMAGE;
+                        registry.put(thumbPath, resource);
+                        GenericArtifact apiArtifact = tenantArtifactManager.getGenericArtifact(apiInfoDTO.getUuid());
+                        apiArtifact.setAttribute(APIConstants.API_OVERVIEW_THUMBNAIL_URL, thumbPath);
+                        tenantArtifactManager.updateGenericArtifact(apiArtifact);
+                    }
+                    startTenantFlow(tenant.getDomain(), apiTenantId,
+                            MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())));
+                    String wsdlResourcePathOld = APIConstants.API_WSDL_RESOURCE_LOCATION
+                            + RegistryPersistenceUtil.createWsdlFileName(apiInfoDTO.getApiProvider(),
+                            apiInfoDTO.getApiName(), apiInfoDTO.getApiVersion());
+                    if (registry.resourceExists(wsdlResourcePathOld)) {
+                        Resource resource = registry.get(wsdlResourcePathOld);
+                        String wsdlResourcePath;
+                        String wsdlResourcePathArchive = artifactPath + RegistryConstants.PATH_SEPARATOR
+                                + APIConstants.API_WSDL_ARCHIVE_LOCATION + apiInfoDTO.getApiProvider()
+                                + APIConstants.WSDL_PROVIDER_SEPERATOR + apiInfoDTO.getApiName()
+                                + apiInfoDTO.getApiVersion() + APIConstants.ZIP_FILE_EXTENSION;
+                        String wsdlResourcePathFile = artifactPath + RegistryConstants.PATH_SEPARATOR
+                                + RegistryPersistenceUtil.createWsdlFileName(apiInfoDTO.getApiProvider(),
+                                apiInfoDTO.getApiName(), apiInfoDTO.getApiVersion());
+                        if (APIConstants.APPLICATION_ZIP.equals(resource.getMediaType())) {
+                            wsdlResourcePath = wsdlResourcePathArchive;
+                        } else {
+                            wsdlResourcePath = wsdlResourcePathFile;
+                        }
+                        registry.copy(wsdlResourcePathOld, wsdlResourcePath);
+                        GenericArtifact apiArtifact = tenantArtifactManager.getGenericArtifact(apiInfoDTO.getUuid());
+                        String absoluteWSDLResourcePath = RegistryUtils
+                                .getAbsolutePath(RegistryContext.getBaseInstance(),
+                                        RegistryConstants.GOVERNANCE_REGISTRY_BASE_PATH) + wsdlResourcePath;
+                        String wsdlRegistryPath = RegistryConstants.PATH_SEPARATOR + "registry" +
+                                RegistryConstants.PATH_SEPARATOR + "resource" + absoluteWSDLResourcePath;
+                        apiArtifact.setAttribute(APIConstants.API_OVERVIEW_WSDL, wsdlRegistryPath);
+                        tenantArtifactManager.updateGenericArtifact(apiArtifact);
+                    }
+                }
+                PrivilegedCarbonContext.endTenantFlow();
+            }
+        } catch (RegistryException e) {
+            log.error("Error while intitiation the registry", e);
+        } catch (UserStoreException e) {
+            log.error("Error while retrieving the tenants", e);
+        } catch (APIManagementException e) {
+            log.error("Error while Retrieving API artifact from the registry", e);
+        }
+    }
+
+    public void apiRevisionRelatedMigration() throws APIMigrationException {
+        try {
+            List<Tenant> tenants = APIUtil.getAllTenantsWithSuperTenant();
+            for (Tenant tenant : tenants) {
+                List<APIInfoDTO> apiInfoDTOList = new ArrayList<>();
+                int apiTenantId = tenantManager.getTenantId(tenant.getDomain());
+                APIUtil.loadTenantRegistry(apiTenantId);
+                startTenantFlow(tenant.getDomain(), apiTenantId,
+                        MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())));
+                this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceUserRegistry(
+                        MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())),
+                        apiTenantId);
+                GenericArtifactManager tenantArtifactManager = APIUtil.getArtifactManager(this.registry,
+                        APIConstants.API_KEY);
+                GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
+                APIProvider apiProviderTenant = APIManagerFactory.getInstance().getAPIProvider(
+                        APIUtil.getTenantAdminUserName(tenant.getDomain()));
+                for (GenericArtifact artifact : tenantArtifacts) {
+                    API api = APIUtil.getAPI(artifact);
+                    if (api != null) {
+                        APIInfoDTO apiInfoDTO = new APIInfoDTO();
+                        apiInfoDTO.setUuid(api.getUUID());
+                        apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
+                        apiInfoDTO.setApiName(api.getId().getApiName());
+                        apiInfoDTO.setApiVersion(api.getId().getVersion());
+                        apiInfoDTOList.add(apiInfoDTO);
+                    }
+                }
+                for (APIInfoDTO apiInfoDTO : apiInfoDTOList) {
+                    //adding the api revision
+                    APIRevision apiRevision = new APIRevision();
+                    apiRevision.setApiUUID(apiInfoDTO.getUuid());
+                    apiRevision.setDescription("Initial revision created in migration process");
+                    String revisionId = apiProviderTenant.addAPIRevision(apiRevision, tenant.getDomain());
+                    // retrieve api artifacts
+                    GenericArtifact apiArtifact = tenantArtifactManager.getGenericArtifact(apiInfoDTO.getUuid());
+                    List<APIRevisionDeployment> apiRevisionDeployments = new ArrayList<APIRevisionDeployment>();
+                    String environemnts = apiArtifact.getAttribute(APIConstants.API_OVERVIEW_ENVIRONMENTS);
+                    String[] arrOfEnvironments = environemnts.split(",");
+                    for (String environment : arrOfEnvironments) {
+                        APIRevisionDeployment apiRevisionDeployment = new APIRevisionDeployment();
+                        apiRevisionDeployment.setRevisionUUID(revisionId);
+                        apiRevisionDeployment.setDeployment(environment);
+                        apiRevisionDeployment.setDisplayOnDevportal(true);
+                        apiRevisionDeployments.add(apiRevisionDeployment);
+                    }
+                    if (!apiRevisionDeployments.isEmpty()) {
+                        apiProviderTenant.addAPIRevisionDeployment(apiInfoDTO.getUuid(), revisionId,
+                                apiRevisionDeployments);
+                    }
+                }
+            }
+        } catch (RegistryException e) {
+            log.error("Error while intitiation the registry", e);
+        } catch (UserStoreException e){
+            log.error("Error while retrieving the tenants", e);
+        } catch (APIManagementException e) {
+            log.error("Error while Retrieving API artifact from the registry", e);
+        } finally {
+            PrivilegedCarbonContext.endTenantFlow();
+        }
+    }
+
+    protected void startTenantFlow(String tenantDomain, int tenantId, String username) {
+        PrivilegedCarbonContext.startTenantFlow();
+        PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(tenantDomain, true);
+        PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantId(tenantId);
+        PrivilegedCarbonContext.getThreadLocalCarbonContext().setUsername(username);
     }
 }
