@@ -9,6 +9,7 @@ public class APIInfoDTO {
     private String getApiContextTemplate;
     private String uuid;
     private String status;
+    private String type;
 
     public String getUuid() { return uuid; }
 
@@ -70,5 +71,13 @@ public class APIInfoDTO {
     public void setStatus(String status) {
 
         this.status = status;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 }

@@ -20,9 +20,11 @@ package org.wso2.carbon.apimgt.migration.client;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.model.API;
+import org.wso2.carbon.apimgt.api.model.APIProduct;
 import org.wso2.carbon.apimgt.api.APIProvider;
 import org.wso2.carbon.apimgt.api.model.APIRevision;
 import org.wso2.carbon.apimgt.api.model.APIRevisionDeployment;
@@ -162,9 +164,7 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                 APIUtil.loadTenantRegistry(apiTenantId);
                 startTenantFlow(tenant.getDomain(), apiTenantId,
                         MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())));
-                this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceUserRegistry(
-                        MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())),
-                        apiTenantId);
+                this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceSystemRegistry(apiTenantId);
                 GenericArtifactManager tenantArtifactManager = APIUtil.getArtifactManager(this.registry,
                         APIConstants.API_KEY);
                 GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
@@ -247,31 +247,52 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                 APIUtil.loadTenantRegistry(apiTenantId);
                 startTenantFlow(tenant.getDomain(), apiTenantId,
                         MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())));
-                this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceUserRegistry(
-                        MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())),
-                        apiTenantId);
+                this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceSystemRegistry(apiTenantId);
                 GenericArtifactManager tenantArtifactManager = APIUtil.getArtifactManager(this.registry,
                         APIConstants.API_KEY);
                 GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
                 APIProvider apiProviderTenant = APIManagerFactory.getInstance().getAPIProvider(
                         APIUtil.getTenantAdminUserName(tenant.getDomain()));
                 for (GenericArtifact artifact : tenantArtifacts) {
-                    API api = APIUtil.getAPI(artifact);
-                    if (api != null) {
-                        APIInfoDTO apiInfoDTO = new APIInfoDTO();
-                        apiInfoDTO.setUuid(api.getUUID());
-                        apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
-                        apiInfoDTO.setApiName(api.getId().getApiName());
-                        apiInfoDTO.setApiVersion(api.getId().getVersion());
-                        apiInfoDTOList.add(apiInfoDTO);
+                    if (StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_STATUS),
+                            APIConstants.PUBLISHED)) {
+                        if (!StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_TYPE),
+                                APIConstants.API_PRODUCT)) {
+                            API api = APIUtil.getAPI(artifact);
+                            if (api != null) {
+                                APIInfoDTO apiInfoDTO = new APIInfoDTO();
+                                apiInfoDTO.setUuid(api.getUUID());
+                                apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
+                                apiInfoDTO.setApiName(api.getId().getApiName());
+                                apiInfoDTO.setApiVersion(api.getId().getVersion());
+                                apiInfoDTO.setType(api.getType());
+                                apiInfoDTOList.add(apiInfoDTO);
+                            }
+                        } else {
+                            APIProduct apiProduct = APIUtil.getAPIProduct(artifact, this.registry);
+                            if (apiProduct != null) {
+                                APIInfoDTO apiInfoDTO = new APIInfoDTO();
+                                apiInfoDTO.setUuid(apiProduct.getUuid());
+                                apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(apiProduct.getId().getProviderName()));
+                                apiInfoDTO.setApiName(apiProduct.getId().getName());
+                                apiInfoDTO.setApiVersion(apiProduct.getId().getVersion());
+                                apiInfoDTO.setType(apiProduct.getType());
+                                apiInfoDTOList.add(apiInfoDTO);
+                            }
+                        }
                     }
                 }
                 for (APIInfoDTO apiInfoDTO : apiInfoDTOList) {
-                    //adding the api revision
+                    //adding the revision
                     APIRevision apiRevision = new APIRevision();
                     apiRevision.setApiUUID(apiInfoDTO.getUuid());
                     apiRevision.setDescription("Initial revision created in migration process");
-                    String revisionId = apiProviderTenant.addAPIRevision(apiRevision, tenant.getDomain());
+                    String revisionId;
+                    if (!StringUtils.equalsIgnoreCase(apiInfoDTO.getType(), APIConstants.API_PRODUCT)) {
+                        revisionId = apiProviderTenant.addAPIRevision(apiRevision, tenant.getDomain());
+                    } else {
+                        revisionId = apiProviderTenant.addAPIProductRevision(apiRevision);
+                    }
                     // retrieve api artifacts
                     GenericArtifact apiArtifact = tenantArtifactManager.getGenericArtifact(apiInfoDTO.getUuid());
                     List<APIRevisionDeployment> apiRevisionDeployments = new ArrayList<APIRevisionDeployment>();
@@ -285,8 +306,13 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                         apiRevisionDeployments.add(apiRevisionDeployment);
                     }
                     if (!apiRevisionDeployments.isEmpty()) {
-                        apiProviderTenant.addAPIRevisionDeployment(apiInfoDTO.getUuid(), revisionId,
-                                apiRevisionDeployments);
+                        if (!StringUtils.equalsIgnoreCase(apiInfoDTO.getType(), APIConstants.API_PRODUCT)) {
+                            apiProviderTenant.deployAPIRevision(apiInfoDTO.getUuid(), revisionId,
+                                    apiRevisionDeployments);
+                        } else {
+                            apiProviderTenant.deployAPIProductRevision(apiInfoDTO.getUuid(), revisionId,
+                                    apiRevisionDeployments);
+                        }
                     }
                 }
             }
@@ -299,6 +325,10 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
         } finally {
             PrivilegedCarbonContext.endTenantFlow();
         }
+    }
+
+    public void migrateProductMappingTable() throws APIMigrationException {
+        apiMgtDAO.updateProductMappings();
     }
 
     protected void startTenantFlow(String tenantDomain, int tenantId, String username) {
