@@ -1,3 +1,22 @@
+/*
+ *  Copyright (c) 2021, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ *  WSO2 Inc. licenses this file to you under the Apache License,
+ *  Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+
 package org.wso2.carbon.apimgt.migration.client;
 
 import org.apache.commons.logging.Log;
@@ -26,15 +45,13 @@ import java.util.List;
 
 public class MigrateUUIDToDB extends MigrationClientBase{
 
-    private RegistryService registryService;
     protected Registry registry;
     protected TenantManager tenantManager;
     private static final Log log = LogFactory.getLog(ScopeRoleMappingPopulationClient.class);
     APIMgtDAO apiMgtDAO = APIMgtDAO.getInstance();
     public MigrateUUIDToDB(String tenantArguments, String blackListTenantArguments, String tenantRange,
-                           RegistryService registryService, TenantManager tenantManager) throws UserStoreException {
+                           TenantManager tenantManager) throws UserStoreException {
         super(tenantArguments, blackListTenantArguments, tenantRange, tenantManager);
-        this.registryService = registryService;
         this.tenantManager = tenantManager;
     }
 
@@ -43,53 +60,41 @@ public class MigrateUUIDToDB extends MigrationClientBase{
      * @throws APIMigrationException
      */
     public void moveUUIDToDBFromRegistry() throws APIMigrationException {
+
         List<APIInfoDTO> apiInfoDTOList = new ArrayList<>();
         try {
-            this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceUserRegistry();
-            GenericArtifactManager artifactManager = APIUtil.getArtifactManager(this.registry,
-                    APIConstants.API_KEY);
-            GenericArtifact[] artifacts = artifactManager.getAllGenericArtifacts();
-            for(GenericArtifact artifact: artifacts){
-                API api = APIUtil.getAPI(artifact);
-                if(api != null){
-                    APIInfoDTO apiInfoDTO = new APIInfoDTO();
-                    apiInfoDTO.setUuid(api.getUUID());
-                    apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
-                    apiInfoDTO.setApiName(api.getId().getApiName());
-                    apiInfoDTO.setApiVersion(api.getId().getVersion());
-                    apiInfoDTOList.add(apiInfoDTO);
-                }
-            }
-
-            Tenant[] tenants = tenantManager.getAllTenants();
-            for(Tenant tenant : tenants)
-            {
-                int apiTenantId = tenantManager.getTenantId(tenant.getDomain());
-                APIUtil.loadTenantRegistry(apiTenantId);
-                startTenantFlow(tenant.getDomain());
-                this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceUserRegistry(
-                        MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())),
-                        apiTenantId);
-                GenericArtifactManager tenantArtifactManager = APIUtil.getArtifactManager(this.registry,
-                        APIConstants.API_KEY);
-                GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
-                for(GenericArtifact artifact: tenantArtifacts){
-                    API api = APIUtil.getAPI(artifact);
-                    if(api != null){
-                        APIInfoDTO apiInfoDTO = new APIInfoDTO();
-                        apiInfoDTO.setUuid(api.getUUID());
-                        apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
-                        apiInfoDTO.setApiName(api.getId().getApiName());
-                        apiInfoDTO.setApiVersion(api.getId().getVersion());
-                        apiInfoDTOList.add(apiInfoDTO);
+            List<Tenant> tenants = APIUtil.getAllTenantsWithSuperTenant();
+            for (Tenant tenant : tenants) {
+                try {
+                    int apiTenantId = tenantManager.getTenantId(tenant.getDomain());
+                    APIUtil.loadTenantRegistry(apiTenantId);
+                    startTenantFlow(tenant.getDomain());
+                    Registry registry =
+                            ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceSystemRegistry(apiTenantId);
+                    GenericArtifactManager tenantArtifactManager = APIUtil.getArtifactManager(registry,
+                            APIConstants.API_KEY);
+                    GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
+                    for (GenericArtifact artifact : tenantArtifacts) {
+                        API api = APIUtil.getAPI(artifact);
+                        if (api != null) {
+                            APIInfoDTO apiInfoDTO = new APIInfoDTO();
+                            apiInfoDTO.setUuid(api.getUUID());
+                            apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
+                            apiInfoDTO.setApiName(api.getId().getApiName());
+                            apiInfoDTO.setApiVersion(api.getId().getVersion());
+                            apiInfoDTO.setStatus(api.getStatus());
+                            apiInfoDTOList.add(apiInfoDTO);
+                        }
                     }
+                } finally {
+                    PrivilegedCarbonContext.endTenantFlow();
                 }
             }
-            apiMgtDAO.updateUUID(apiInfoDTOList);
+            apiMgtDAO.updateUUIDAndStatus(apiInfoDTOList);
 
         } catch (RegistryException e) {
             log.error("Error while intitiation the registry", e);
-        } catch (UserStoreException e){
+        } catch (UserStoreException e) {
             log.error("Error while retrieving the tenants", e);
         } catch (APIManagementException e) {
             log.error("Error while Retrieving API artifact from the registry", e);

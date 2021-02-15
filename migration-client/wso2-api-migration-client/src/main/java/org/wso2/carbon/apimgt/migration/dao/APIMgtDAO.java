@@ -31,13 +31,18 @@ import org.wso2.carbon.apimgt.migration.dto.APIScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.dto.AMAPIResourceScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.util.Constants;
 
-
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.wso2.carbon.user.api.Tenant;
 import org.wso2.carbon.user.api.UserStoreException;
@@ -46,6 +51,7 @@ import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 public class APIMgtDAO {
+
     private static final Log log = LogFactory.getLog(APIMgtDAO.class);
     private static APIMgtDAO INSTANCE = null;
     private static final String RESOURCE_PATH = "RESOURCE_PATH";
@@ -92,8 +98,8 @@ public class APIMgtDAO {
             "WHERE AMA.TOKEN_TYPE = 'JWT' AND PROPERTY_KEY = 'tokenType' AND TENANT_ID = ?";
     private static String UPDATE_TOKEN_TYPE_TO_JWT = "UPDATE IDN_OIDC_PROPERTY SET" +
             " PROPERTY_VALUE = ? WHERE PROPERTY_KEY  = 'tokenType' AND CONSUMER_KEY = ?";
-    private static String UPDATE_UUID_BY_THE_IDENTIFIER = "UPDATE AM_API SET API_UUID = ? WHERE API_PROVIDER = ? " +
-            "AND API_NAME = ? AND API_VERSION = ? ";
+    private static String UPDATE_UUID_BY_THE_IDENTIFIER = "UPDATE AM_API SET API_UUID = ?,STATUS = ? WHERE " +
+            "API_PROVIDER = ? AND API_NAME = ? AND API_VERSION = ? ";
     private static String INSERT_URL_MAPPINGS_FOR_WS_APIS =
             "INSERT INTO AM_API_URL_MAPPING (API_ID,HTTP_METHOD,AUTH_SCHEME,URL_PATTERN) VALUES (?,?,?,?)";
     private static String GET_ALL_API_IDENTIFIERS = "SELECT API_PROVIDER, API_NAME, API_VERSION FROM AM_API";
@@ -106,11 +112,16 @@ public class APIMgtDAO {
                     "AM_SUBSCRIPTION.API_ID = AM_API.API_ID AND " +
                     "AM_APPLICATION.APPLICATION_ID = AM_SUBSCRIPTION.APPLICATION_ID AND " +
                     "AM_SUBSCRIBER.SUBSCRIBER_ID = AM_APPLICATION.SUBSCRIBER_ID";
+    private static final String RETRIEVE_ENDPOINT_CERTIFICATE_ALIASES = "SELECT ALIAS FROM AM_CERTIFICATE_METADATA";
+    private static final String UPDATE_ENDPOINT_CERTIFICATES = "UPDATE AM_CERTIFICATE_METADATA SET CERTIFICATE = ? " +
+            "WHERE ALIAS = ?";
 
     private APIMgtDAO() {
+
     }
 
     public static APIMgtDAO getInstance() {
+
         if (INSTANCE == null) {
             INSTANCE = new APIMgtDAO();
         }
@@ -119,10 +130,12 @@ public class APIMgtDAO {
 
     /**
      * This mehthod is used to get data from IDN_OAUTH2_RESOURCE_SCOPE by tenant id
+     *
      * @return
      * @throws APIMigrationException
      */
     public ArrayList<ResourceScopeInfoDTO> getResourceScopeData() throws APIMigrationException {
+
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(GET_RESOURCE_SCOPE_SQL)) {
                 try (ResultSet resultSet = ps.executeQuery()) {
@@ -144,10 +157,12 @@ public class APIMgtDAO {
 
     /**
      * This mehthod is used to get data from AM_API table
+     *
      * @return
      * @throws APIMigrationException
      */
     public ArrayList<APIInfoDTO> getAPIData() throws APIMigrationException {
+
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(GET_AM_API_SQL)) {
                 try (ResultSet resultSet = ps.executeQuery()) {
@@ -172,10 +187,12 @@ public class APIMgtDAO {
 
     /**
      * This method is used to get data from AM_API_URL_MAPPING table
+     *
      * @return
      * @throws APIMigrationException
      */
     public ArrayList<APIURLMappingInfoDTO> getAPIURLMappingData() throws APIMigrationException {
+
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(GET_AM_API_URL_MAPPING_SQL)) {
                 try (ResultSet resultSet = ps.executeQuery()) {
@@ -198,10 +215,12 @@ public class APIMgtDAO {
 
     /**
      * This method is used to get data from AM_API_SCOPE, IDN_OAUTH2_SCOPE by tenant id
+     *
      * @return
      * @throws APIMigrationException
      */
     public ArrayList<APIInfoScopeMappingDTO> getAPIInfoScopeData() throws APIMigrationException {
+
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(GET_API_INFO_SCOPE_SQL)) {
                 try (ResultSet resultSet = ps.executeQuery()) {
@@ -228,15 +247,15 @@ public class APIMgtDAO {
     /**
      * Alter the scope id in the resource scope
      *
-     * @param scopeId Scope ID
+     * @param scopeId      Scope ID
      * @param resourcePath Resource Path
-     * @param newScopeId Scope ID
+     * @param newScopeId   Scope ID
      */
     public static void updateScopeResource(int newScopeId, String resourcePath, int scopeId) throws APIMigrationException {
 
         try (Connection connection = APIMgtDBUtil.getConnection()) {
             connection.setAutoCommit(false);
-            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_SCOPE_ID_IN_RESOURCE)){
+            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_SCOPE_ID_IN_RESOURCE)) {
                 preparedStatement.setInt(1, newScopeId);
                 preparedStatement.setInt(2, scopeId);
                 preparedStatement.executeUpdate();
@@ -250,13 +269,14 @@ public class APIMgtDAO {
         }
     }
 
-
     /**
      * This mehthod is used to get data from AM_API_SCOPE
+     *
      * @return
      * @throws APIMigrationException
      */
     public ArrayList<APIScopeMappingDTO> getAMScopeData() throws APIMigrationException {
+
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(GET_AM_API_SCOPE_SQL)) {
                 try (ResultSet resultSet = ps.executeQuery()) {
@@ -277,11 +297,13 @@ public class APIMgtDAO {
 
     /**
      * This method is used to get API Id using API context
+     *
      * @param context
      * @return
      * @throws APIMigrationException
      */
     public String getAPIID(String context) throws APIMigrationException {
+
         String apiId = null;
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(GET_API_ID)) {
@@ -300,11 +322,13 @@ public class APIMgtDAO {
 
     /**
      * This method is used to retrieve the scope id given the resource path
+     *
      * @param resourcePath
      * @throws APIMigrationException
      */
     public int getScopeId(String resourcePath)
             throws APIMigrationException {
+
         int scopeId = -1;
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(GET_SCOPE_ID)) {
@@ -323,11 +347,13 @@ public class APIMgtDAO {
 
     /**
      * This method is used to retrieve the scope details given the scopeId
+     *
      * @param scopeId
      * @throws APIMigrationException
      */
     public ScopeInfoDTO getScopeInfoByScopeId(int scopeId)
             throws APIMigrationException {
+
         ScopeInfoDTO scopeInfoDTO = new ScopeInfoDTO();
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(GET_SCOPE_BY_ID_SQL)) {
@@ -350,11 +376,13 @@ public class APIMgtDAO {
 
     /**
      * This method is used to insert data to AM_API_RESOURCE_SCOPE_MAPPING table
+     *
      * @param resourceScopeMappingDTOS
      * @throws APIMigrationException
      */
     public void addDataToResourceScopeMapping(List<AMAPIResourceScopeMappingDTO> resourceScopeMappingDTOS)
             throws APIMigrationException {
+
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             conn.setAutoCommit(false);
             try (PreparedStatement psAddResourceScope =
@@ -379,11 +407,13 @@ public class APIMgtDAO {
     /**
      * This method is used to remove the duplicate data from IDN_OAUTH2_SCOPE, AM_API_SCOPE
      * and IDN_OAUTH2_SCOPE_BINDING tables
+     *
      * @param duplicateList
      * @throws APIMigrationException
      */
     public void removeDuplicateScopeEntries(ArrayList<APIScopeMappingDTO> duplicateList)
             throws APIMigrationException {
+
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             for (APIScopeMappingDTO apiScopeMappingDTOS : duplicateList) {
                 try (PreparedStatement preparedStatement = conn.prepareStatement(DELETE_SCOPE_FROM_AM_API_SCOPES)) {
@@ -412,7 +442,7 @@ public class APIMgtDAO {
         ArrayList<String> consumerKeys = new ArrayList<String>();
         try (Connection connection = APIMgtDBUtil.getConnection()) {
             connection.setAutoCommit(false);
-            try (PreparedStatement preparedStatement = connection.prepareStatement(GET_APPS_OF_TYPE_JWT)){
+            try (PreparedStatement preparedStatement = connection.prepareStatement(GET_APPS_OF_TYPE_JWT)) {
                 preparedStatement.setInt(1, tenantId);
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
                     connection.commit();
@@ -437,7 +467,7 @@ public class APIMgtDAO {
 
         try (Connection connection = APIMgtDBUtil.getConnection()) {
             connection.setAutoCommit(false);
-            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_TOKEN_TYPE_TO_JWT)){
+            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_TOKEN_TYPE_TO_JWT)) {
                 preparedStatement.setString(1, "JWT");
                 preparedStatement.setString(2, consumerKey);
                 preparedStatement.executeUpdate();
@@ -453,17 +483,19 @@ public class APIMgtDAO {
 
     /**
      * This method is used to insert data to add default URL Mappings of WS APIs
+     *
      * @param apiId
      * @throws APIMigrationException
      */
     public void addURLTemplatesForWSAPIs(int apiId) throws APIMigrationException {
+
         if (apiId == -1) {
             return;
         }
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             conn.setAutoCommit(false);
             try (PreparedStatement ps = conn.prepareStatement(INSERT_URL_MAPPINGS_FOR_WS_APIS)) {
-                for (String httpVerb: Constants.HTTP_DEFAULT_METHODS) {
+                for (String httpVerb : Constants.HTTP_DEFAULT_METHODS) {
                     ps.setInt(1, apiId);
                     ps.setString(2, httpVerb);
                     ps.setString(3, Constants.AUTH_APPLICATION_OR_USER_LEVEL_TOKEN);
@@ -490,6 +522,7 @@ public class APIMgtDAO {
      * @throws APIMigrationException
      */
     public boolean isCrossTenantAPISubscriptionsExist(TenantManager tenantManager) throws APIMigrationException {
+
         try (Connection connection = APIMgtDBUtil.getConnection()) {
             connection.setAutoCommit(false);
             try (PreparedStatement preparedStatement = connection.prepareStatement(CROSS_TENANT_API_SUBSCRIPTIONS)) {
@@ -529,16 +562,17 @@ public class APIMgtDAO {
      * @param apiInfoDTOS API Information list
      * @throws APIMigrationException
      */
-    public void updateUUID(List<APIInfoDTO> apiInfoDTOS) throws APIMigrationException {
+    public void updateUUIDAndStatus(List<APIInfoDTO> apiInfoDTOS) throws APIMigrationException {
 
         try (Connection connection = APIMgtDBUtil.getConnection()) {
             connection.setAutoCommit(false);
-            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_UUID_BY_THE_IDENTIFIER)){
-                for(APIInfoDTO apiInfoDTO : apiInfoDTOS){
+            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_UUID_BY_THE_IDENTIFIER)) {
+                for (APIInfoDTO apiInfoDTO : apiInfoDTOS) {
                     preparedStatement.setString(1, apiInfoDTO.getUuid());
-                    preparedStatement.setString(2, apiInfoDTO.getApiProvider());
-                    preparedStatement.setString(3, apiInfoDTO.getApiName());
-                    preparedStatement.setString(4, apiInfoDTO.getApiVersion());
+                    preparedStatement.setString(2, apiInfoDTO.getStatus());
+                    preparedStatement.setString(3, apiInfoDTO.getApiProvider());
+                    preparedStatement.setString(4, apiInfoDTO.getApiName());
+                    preparedStatement.setString(5, apiInfoDTO.getApiVersion());
                     preparedStatement.addBatch();
                 }
                 preparedStatement.executeBatch();
@@ -552,4 +586,56 @@ public class APIMgtDAO {
             throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_UUID_BY_THE_IDENTIFIER), e);
         }
     }
+
+    public Set<String> retrieveListOfEndpointCertificateAliases() throws APIMigrationException {
+
+        Set<String> aliasSet = new HashSet<>();
+        try (Connection connection = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement preparedStatement =
+                         connection.prepareStatement(RETRIEVE_ENDPOINT_CERTIFICATE_ALIASES)) {
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        aliasSet.add(resultSet.getString("ALIAS"));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(RETRIEVE_ENDPOINT_CERTIFICATE_ALIASES),
+                    e);
+        }
+        return aliasSet;
+    }
+
+    public void updateEndpointCertificates(Map<String, String> certificateMap) throws APIMigrationException {
+
+        if (certificateMap == null || certificateMap.isEmpty()) {
+            return;
+        }
+        try (Connection connection = APIMgtDBUtil.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_ENDPOINT_CERTIFICATES)) {
+                for (Map.Entry<String, String> certificateMapEntry : certificateMap.entrySet()) {
+                    preparedStatement.setBinaryStream(1, getInputStream(certificateMapEntry.getValue()));
+                    preparedStatement.setString(2, certificateMapEntry.getKey());
+                    preparedStatement.addBatch();
+                }
+                preparedStatement.executeBatch();
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            }
+
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(RETRIEVE_ENDPOINT_CERTIFICATE_ALIASES),
+                    e);
+        }
+    }
+
+    private InputStream getInputStream(String value) {
+
+        byte[] cert = value.getBytes(StandardCharsets.UTF_8);
+        return new ByteArrayInputStream(cert);
+    }
+
 }

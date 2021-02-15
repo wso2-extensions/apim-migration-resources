@@ -69,54 +69,66 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
 
     public MigrateFrom310(String tenantArguments, String blackListTenantArguments, String tenantRange,
                           RegistryService registryService, TenantManager tenantManager) throws UserStoreException {
+
         super(tenantArguments, blackListTenantArguments, tenantRange, tenantManager);
         this.registryService = registryService;
     }
 
     @Override
     public void databaseMigration() throws APIMigrationException, SQLException {
+
     }
 
     @Override
     public void registryResourceMigration() throws APIMigrationException {
+
         rxtMigration(registryService);
         updateEnableStoreInRxt();
     }
 
     @Override
     public void fileSystemMigration() throws APIMigrationException {
+
     }
 
     @Override
     public void cleanOldResources() throws APIMigrationException {
+
     }
 
     @Override
     public void statsMigration() throws APIMigrationException, APIMStatMigrationException {
+
     }
 
     @Override
     public void tierMigration(List<String> options) throws APIMigrationException {
+
     }
 
     @Override
     public void updateArtifacts() throws APIMigrationException {
+
     }
 
     @Override
     public void populateSPAPPs() throws APIMigrationException {
+
     }
 
     @Override
     public void populateScopeRoleMapping() throws APIMigrationException {
+
     }
 
     @Override
     public void updateScopeRoleMappings() throws APIMigrationException {
+
     }
 
     @Override
     public void scopeMigration() throws APIMigrationException {
+
         APIMgtDAO apiMgtDAO = APIMgtDAO.getInstance();
         // Step 1: remove duplicate entries
         ArrayList<APIScopeMappingDTO> duplicateList = new ArrayList<>();
@@ -193,7 +205,7 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
         // Iterate for each tenant. The reason we do this migration step wise for each tenant is so that, we do not
         // overwhelm the amount of rows returned for each database call in systems with a large tenant count.
         for (Tenant tenant : tenantList) {
-            ArrayList<String> consumerKeys =  APIMgtDAO.getAppsOfTypeJWT(tenant.getId());
+            ArrayList<String> consumerKeys = APIMgtDAO.getAppsOfTypeJWT(tenant.getId());
             if (consumerKeys != null) {
                 for (String consumerKey : consumerKeys) {
                     APIMgtDAO.updateTokenTypeToJWT(consumerKey);
@@ -203,6 +215,7 @@ public class MigrateFrom310 extends MigrationClientBase implements MigrationClie
     }
 
     private void updateEnableStoreInRxt() {
+
         for (Tenant tenant : getTenantsArray()) {
             try {
                 registryService.startTenantFlow(tenant);
