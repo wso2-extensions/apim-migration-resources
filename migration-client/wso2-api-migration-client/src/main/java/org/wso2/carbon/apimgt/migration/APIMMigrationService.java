@@ -87,7 +87,8 @@ public class APIMMigrationService implements ServerStartupObserver {
             RegistryServiceImpl registryService = new RegistryServiceImpl();
             TenantManager tenantManager = ServiceHolder.getRealmService().getTenantManager();
             MigrateUUIDToDB commonMigrationClient = new MigrateUUIDToDB(tenants, blackListTenants, tenantRange,
-                    registryService, tenantManager);
+                    tenantManager);
+            IdentityScopeMigration identityScopeMigration = new IdentityScopeMigration();
             //Check SP-Migration enabled
             if (isSPMigration) {
                 log.info("----------------Migrating to WSO2 API Manager analytics 3.2.0");
@@ -124,10 +125,12 @@ public class APIMMigrationService implements ServerStartupObserver {
                 log.info("Migrated Successfully to 3.2");
                 log.info("Starting Migration from API Manager 3.2 to 4.0");
                 commonMigrationClient.moveUUIDToDBFromRegistry();
+                identityScopeMigration.migrateScopes();
                 MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
+                migrateFrom320.migrateEndpointCertificates();
                 log.info("Migrated Successfully to 4.0");
             } else if (V210.equals(migrateFromVersion) || V220.equals(migrateFromVersion) ||
                     V250.equals(migrateFromVersion) || V260.equals(migrateFromVersion)) {
@@ -148,10 +151,12 @@ public class APIMMigrationService implements ServerStartupObserver {
                 log.info("Migrated Successfully to 3.2");
                 log.info("Starting Migration from API Manager 3.2 to 4.0");
                 commonMigrationClient.moveUUIDToDBFromRegistry();
+                identityScopeMigration.migrateScopes();
                 MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
+                migrateFrom320.migrateEndpointCertificates();
                 log.info("Migrated Successfully to 4.0");
             } else if (isScopeRoleMappingPopulation) {
                 MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
@@ -167,10 +172,12 @@ public class APIMMigrationService implements ServerStartupObserver {
                 log.info("Migrated Successfully to 3.2");
                 log.info("Starting Migration from API Manager 3.2 to 4.0");
                 commonMigrationClient.moveUUIDToDBFromRegistry();
+                identityScopeMigration.migrateScopes();
                 MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
+                migrateFrom320.migrateEndpointCertificates();
                 log.info("Migrated Successfully to 4.0");
             } else if (V320.equals(migrateFromVersion)) {
                 commonMigrationClient.moveUUIDToDBFromRegistry();
@@ -178,6 +185,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                         tenantRange, registryService, tenantManager);
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
+                migrateFrom320.migrateEndpointCertificates();
             } else {
                 MigrationClientFactory.initFactory(tenants, blackListTenants, tenantRange, registryService, tenantManager,
                         removeDecryptionFailedKeysFromDB);

@@ -8,6 +8,7 @@ public class APIInfoDTO {
     private String apiVersion;
     private String getApiContextTemplate;
     private String uuid;
+    private String status;
 
     public String getUuid() { return uuid; }
 
@@ -59,5 +60,15 @@ public class APIInfoDTO {
 
     public void setGetApiContextTemplate(String getApiContextTemplate) {
         this.getApiContextTemplate = getApiContextTemplate;
+    }
+
+    public String getStatus() {
+
+        return status;
+    }
+
+    public void setStatus(String status) {
+
+        this.status = status;
     }
 }

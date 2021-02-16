@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.apimgt.migration.client;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.apimgt.api.APIManagementException;
@@ -25,6 +26,7 @@ import org.wso2.carbon.apimgt.api.model.API;
 import org.wso2.carbon.apimgt.api.APIProvider;
 import org.wso2.carbon.apimgt.api.model.APIRevision;
 import org.wso2.carbon.apimgt.api.model.APIRevisionDeployment;
+import org.wso2.carbon.apimgt.impl.certificatemgt.ResponseCode;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
@@ -55,11 +57,23 @@ import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class MigrateFrom320 extends MigrationClientBase implements MigrationClient {
 
@@ -67,6 +81,12 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
     private static final String SEPERATOR = "/";
     private static final String SPLITTER = ":";
     private static final String TENANT_IDENTIFIER = "t";
+    private static char[] TRUST_STORE_PASSWORD = System.getProperty("javax.net.ssl.trustStorePassword").toCharArray();
+    private static String TRUST_STORE = System.getProperty("javax.net.ssl.trustStore");
+    private static String CERTIFICATE_TYPE = "X.509";
+    public static final String BEGIN_CERTIFICATE_STRING = "-----BEGIN CERTIFICATE-----\n";
+    public static final String END_CERTIFICATE_STRING = "-----END CERTIFICATE-----";
+    private static final String KEY_STORE_TYPE = "JKS";
     private static final String APPLICATION_ROLE_PREFIX = "Application/";
     private RegistryService registryService;
     protected Registry registry;
@@ -286,5 +306,35 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
         PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(tenantDomain, true);
         PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantId(tenantId);
         PrivilegedCarbonContext.getThreadLocalCarbonContext().setUsername(username);
+    }
+
+    public void migrateEndpointCertificates() {
+
+        File trustStoreFile = new File(TRUST_STORE);
+
+        try {
+            KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+            try (InputStream localTrustStoreStream = new FileInputStream(trustStoreFile)) {
+                trustStore.load(localTrustStoreStream, TRUST_STORE_PASSWORD);
+            }
+            Set<String> aliases = APIMgtDAO.getInstance().retrieveListOfEndpointCertificateAliases();
+            Map<String, String> certificateMap = new HashMap<>();
+            if (aliases != null) {
+                for (String alias : aliases) {
+                    Certificate certificate = trustStore.getCertificate(alias);
+                    if (certificate != null) {
+                        byte[] encoded = Base64.encodeBase64(certificate.getEncoded());
+                        String base64EncodedString = BEGIN_CERTIFICATE_STRING.concat(new String(encoded)).concat("\n")
+                                .concat(END_CERTIFICATE_STRING);
+                        base64EncodedString = Base64.encodeBase64URLSafeString(base64EncodedString.getBytes());
+                        certificateMap.put(alias, base64EncodedString);
+                    }
+                }
+            }
+            APIMgtDAO.getInstance().updateEndpointCertificates(certificateMap);
+        } catch (NoSuchAlgorithmException | IOException | CertificateException
+                | KeyStoreException | APIMigrationException e) {
+            log.error("Error while Migrating Endpoint Certificates", e);
+        }
     }
 }
