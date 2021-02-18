@@ -128,6 +128,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 identityScopeMigration.migrateScopes();
                 MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom320.migrateProductMappingTable();
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
                 migrateFrom320.migrateEndpointCertificates();
@@ -154,6 +155,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 identityScopeMigration.migrateScopes();
                 MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom320.migrateProductMappingTable();
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
                 migrateFrom320.migrateEndpointCertificates();
@@ -175,6 +177,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 identityScopeMigration.migrateScopes();
                 MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom320.migrateProductMappingTable();
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
                 migrateFrom320.migrateEndpointCertificates();
@@ -183,6 +186,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 commonMigrationClient.moveUUIDToDBFromRegistry();
                 MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom320.migrateProductMappingTable();
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
                 migrateFrom320.migrateEndpointCertificates();
