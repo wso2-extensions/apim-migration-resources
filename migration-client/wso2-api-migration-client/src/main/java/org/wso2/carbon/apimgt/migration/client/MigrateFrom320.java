@@ -254,8 +254,10 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                 APIProvider apiProviderTenant = APIManagerFactory.getInstance().getAPIProvider(
                         APIUtil.getTenantAdminUserName(tenant.getDomain()));
                 for (GenericArtifact artifact : tenantArtifacts) {
-                    if (StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_STATUS),
-                            APIConstants.PUBLISHED)) {
+                    if (!StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_STATUS),
+                            org.wso2.carbon.apimgt.impl.APIConstants.CREATED) &&
+                            !StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_STATUS),
+                            org.wso2.carbon.apimgt.impl.APIConstants.RETIRED)) {
                         if (!StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_TYPE),
                                 APIConstants.API_PRODUCT)) {
                             API api = APIUtil.getAPI(artifact);
