@@ -19,6 +19,7 @@
 package org.wso2.carbon.apimgt.migration.dao;
 
 import org.apache.commons.logging.Log;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
@@ -35,6 +36,7 @@ import org.wso2.carbon.apimgt.migration.dto.AMAPIResourceScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.util.Constants;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -691,12 +693,17 @@ public class APIMgtDAO {
                 List<URITemplate> urlMappingList = new ArrayList<>();
                 try (ResultSet rs = getURLMappingsStatement.executeQuery()) {
                     while (rs.next()) {
+                        String script = null;
                         URITemplate uriTemplate = new URITemplate();
                         uriTemplate.setHTTPVerb(rs.getString(1));
                         uriTemplate.setAuthType(rs.getString(2));
                         uriTemplate.setUriTemplate(rs.getString(3));
                         uriTemplate.setThrottlingTier(rs.getString(4));
-                        uriTemplate.setMediationScript(rs.getString(5));
+                        InputStream mediationScriptBlob = rs.getBinaryStream(5);
+                        if (mediationScriptBlob != null) {
+                            script = getStringFromInputStream(mediationScriptBlob);
+                        }
+                        uriTemplate.setMediationScript(script);
                         if (!StringUtils.isEmpty(rs.getString(6))) {
                             Scope scope = new Scope();
                             scope.setKey(rs.getString(6));
@@ -802,5 +809,21 @@ public class APIMgtDAO {
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing updateProductMappings", e);
         }
+    }
+
+    /**
+     * Function converts IS to String
+     * Used for handling blobs
+     * @param is - The Input Stream
+     * @return - The inputStream as a String
+     */
+    public static String getStringFromInputStream(InputStream is) throws APIMigrationException {
+        String str = null;
+        try {
+            str = IOUtils.toString(is, "UTF-8");
+        } catch (IOException e) {
+            throw new APIMigrationException("Error occurred while converting input stream to string.", e);
+        }
+        return str;
     }
 }
