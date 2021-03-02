@@ -132,6 +132,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
                 migrateFrom320.migrateEndpointCertificates();
+                migrateFrom320.replaceKMNamebyUUID();
                 log.info("Migrated Successfully to 4.0");
             } else if (V210.equals(migrateFromVersion) || V220.equals(migrateFromVersion) ||
                     V250.equals(migrateFromVersion) || V260.equals(migrateFromVersion)) {
@@ -159,6 +160,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
                 migrateFrom320.migrateEndpointCertificates();
+                migrateFrom320.replaceKMNamebyUUID();
                 log.info("Migrated Successfully to 4.0");
             } else if (isScopeRoleMappingPopulation) {
                 MigrationClient scopeRoleMappingPopulation = new ScopeRoleMappingPopulationClient(tenants, blackListTenants, tenantRange, registryService, tenantManager);
@@ -181,6 +183,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
                 migrateFrom320.migrateEndpointCertificates();
+                migrateFrom320.replaceKMNamebyUUID();
                 log.info("Migrated Successfully to 4.0");
             } else if (V320.equals(migrateFromVersion)) {
                 commonMigrationClient.moveUUIDToDBFromRegistry();
@@ -190,6 +193,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
                 migrateFrom320.migrateEndpointCertificates();
+                migrateFrom320.replaceKMNamebyUUID();
             } else {
                 MigrationClientFactory.initFactory(tenants, blackListTenants, tenantRange, registryService, tenantManager,
                         removeDecryptionFailedKeysFromDB);

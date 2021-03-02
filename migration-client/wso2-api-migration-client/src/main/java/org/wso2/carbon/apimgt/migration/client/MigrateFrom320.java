@@ -369,4 +369,15 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
             log.error("Error while Migrating Endpoint Certificates", e);
         }
     }
+
+    public void replaceKMNamebyUUID()
+            throws APIMigrationException {
+        APIMgtDAO apiMgtDAO = APIMgtDAO.getInstance();
+
+        for (Tenant tenant : getTenantsArray()) {
+            apiMgtDAO.replaceKeyMappingKMNamebyUUID(tenant);
+            apiMgtDAO.replaceRegistrationKMNamebyUUID(tenant);
+        }
+
+    }
 }
