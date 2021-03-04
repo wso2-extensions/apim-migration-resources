@@ -906,10 +906,10 @@ public class APIMgtDAO {
                 conn.commit();
             } catch (SQLException ex) {
                 conn.rollback();
-                throw new APIMigrationException("Failed to add data to AM_API_RESOURCE_SCOPE_MAPPING table : ", ex);
+                throw new APIMigrationException("Failed to add data to AM_GATEWAY_ENVIRONMENT table : ", ex);
             }
         } catch (SQLException ex) {
-            throw new APIMigrationException("Failed to add data to AM_API_RESOURCE_SCOPE_MAPPING table : ", ex);
+            throw new APIMigrationException("Failed to add data to AM_GATEWAY_ENVIRONMENT table : ", ex);
         }
     }
 
@@ -936,7 +936,7 @@ public class APIMgtDAO {
             }
             prepStmt.executeBatch();
         } catch (SQLException e) {
-            throw new APIMigrationException("Failed to add data to AM_API_RESOURCE_SCOPE_MAPPING table : ", e);
+            throw new APIMigrationException("Failed to add data to AM_GW_VHOST table : ", e);
         }
     }
 
