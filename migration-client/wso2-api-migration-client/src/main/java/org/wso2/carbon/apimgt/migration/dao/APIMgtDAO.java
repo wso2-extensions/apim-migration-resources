@@ -630,24 +630,27 @@ public class APIMgtDAO {
      * @throws APIMigrationException
      */
     public void replaceKeyMappingKMNamebyUUID(Tenant tenant) throws APIMigrationException {
-        String keyID = null;
-        String keyManagerUUID = null;
         try (Connection connection = APIMgtDBUtil.getConnection()) {
             connection.setAutoCommit(false);
             HashMap<String, String> results = new HashMap<>();
-            try (PreparedStatement preparedStatement = connection.prepareStatement(GET_KEY_MAPPING)) {
-                preparedStatement.setInt(1, tenant.getId());
-                preparedStatement.setString(2, tenant.getDomain());
-                try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                    connection.commit();
-                    while (resultSet.next()) {
-                        keyID = resultSet.getString("KEY_ID");
-                        keyManagerUUID = resultSet.getString("KEY_MANAGER_ID");
-                        results.put(keyID, keyManagerUUID);
+            try {
+                try (PreparedStatement preparedStatement = connection.prepareStatement(GET_KEY_MAPPING)) {
+                    preparedStatement.setInt(1, tenant.getId());
+                    preparedStatement.setString(2, tenant.getDomain());
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            String keyID = resultSet.getString("KEY_ID");
+                            String keyManagerUUID = resultSet.getString("KEY_MANAGER_ID");
+                            results.put(keyID, keyManagerUUID);
+                        }
                     }
                 }
+                updateKeyMappings(connection, results);
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new APIMigrationException("SQLException when executing: ".concat(GET_KEY_MAPPING), e);
             }
-            updateKeyMappings(connection, results);
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing: ".concat(GET_KEY_MAPPING), e);
         }
@@ -668,7 +671,6 @@ public class APIMgtDAO {
                     preparedStatement.addBatch();
                 }
                 preparedStatement.executeBatch();
-                connection.commit();
             }
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_KEY_MAPPINGS), e);
@@ -683,21 +685,26 @@ public class APIMgtDAO {
      */
     public void replaceRegistrationKMNamebyUUID(Tenant tenant) throws APIMigrationException {
         try (Connection connection = APIMgtDBUtil.getConnection()) {
-            HashMap<Integer, String> results = new HashMap<>();
-            connection.setAutoCommit(false);
-            try (PreparedStatement preparedStatement = connection.prepareStatement(GET_APP_REG)) {
-                preparedStatement.setInt(1, tenant.getId());
-                preparedStatement.setString(2, tenant.getDomain());
-                try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                    connection.commit();
-                    while (resultSet.next()) {
-                        Integer regID = resultSet.getInt("REG_ID");
-                        String keyManagerUUID = resultSet.getString("KEY_MANAGER_ID");
-                        results.put(regID, keyManagerUUID);
+            try {
+                HashMap<Integer, String> results = new HashMap<>();
+                connection.setAutoCommit(false);
+                try (PreparedStatement preparedStatement = connection.prepareStatement(GET_APP_REG)) {
+                    preparedStatement.setInt(1, tenant.getId());
+                    preparedStatement.setString(2, tenant.getDomain());
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            Integer regID = resultSet.getInt("REG_ID");
+                            String keyManagerUUID = resultSet.getString("KEY_MANAGER_ID");
+                            results.put(regID, keyManagerUUID);
+                        }
                     }
                 }
+                updateAppRegistration(connection, results);
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new APIMigrationException("SQLException when executing: ".concat(GET_APP_REG), e);
             }
-            updateAppRegistration(connection, results);
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing: ".concat(GET_APP_REG), e);
         }
@@ -711,6 +718,9 @@ public class APIMgtDAO {
     public void updateAppRegistration(Connection connection, HashMap<Integer, String> registrationEntries)
             throws APIMigrationException {
         try {
+            if (registrationEntries == null || registrationEntries.size() == 0) {
+                return;
+            }
             try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_APP_REG)) {
                 for (Integer key : registrationEntries.keySet()) {
                     preparedStatement.setString(1, registrationEntries.get(key));
@@ -718,7 +728,6 @@ public class APIMgtDAO {
                     preparedStatement.addBatch();
                 }
                 preparedStatement.executeBatch();
-                connection.commit();
             }
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_APP_REG), e);
