@@ -22,10 +22,15 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.apimgt.api.APIManagementException;
+import org.wso2.carbon.apimgt.api.model.VHost;
+import org.wso2.carbon.apimgt.impl.dao.constants.SQLConstants;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.api.model.URITemplate;
 import org.wso2.carbon.apimgt.api.model.Scope;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
+import org.wso2.carbon.apimgt.migration.dto.GatewayEnvironmentDTO;
+import org.wso2.carbon.apimgt.migration.dto.LabelDTO;
 import org.wso2.carbon.apimgt.migration.dto.ResourceScopeInfoDTO;
 import org.wso2.carbon.apimgt.migration.dto.ScopeInfoDTO;
 import org.wso2.carbon.apimgt.migration.dto.APIURLMappingInfoDTO;
@@ -44,11 +49,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.wso2.carbon.user.api.Tenant;
 import org.wso2.carbon.user.api.UserStoreException;
@@ -123,6 +131,16 @@ public class APIMgtDAO {
             "WHERE ALIAS = ?";
     private static String UPDATE_REVISION_UUID_PRODUCT_MAPPINGS = "UPDATE AM_API_PRODUCT_MAPPING SET REVISION_UUID =" +
             " 'Current API'";
+    private static String GET_LABEL_SQL = "SELECT AM_LABELS.LABEL_ID, AM_LABELS.NAME, AM_LABELS.DESCRIPTION, " +
+            "AM_LABELS.TENANT_DOMAIN, AM_LABEL_URLS.ACCESS_URL " +
+            "FROM AM_LABELS LEFT JOIN AM_LABEL_URLS ON AM_LABELS.LABEL_ID=AM_LABEL_URLS.LABEL_ID";
+    private static String INSERT_GATEWAY_ENVIRONMENT = "INSERT INTO AM_GATEWAY_ENVIRONMENT " +
+            "(UUID, NAME, TENANT_DOMAIN, DISPLAY_NAME, DESCRIPTION) VALUES (?,?,?,?,?)";
+    private static String INSERT_VHOST = "INSERT INTO AM_GW_VHOST " +
+            "(GATEWAY_ENV_ID, HOST, HTTP_CONTEXT, HTTP_PORT, HTTPS_PORT, WS_PORT, WSS_PORT) VALUES (?,?,?,?,?,?,?)";
+    // TODO: (renuka) Delete content from the table for now, should be dropped after removing table usage in the server
+    private static String DROP_AM_LABELS_TABLE = "DELETE FROM AM_LABELS";
+    private static String DROP_AM_LABEL_URLS_TABLE = "DROP TABLE AM_LABEL_URLS";
     public static String GET_CURRENT_API_PRODUCT_RESOURCES = "SELECT URL_MAPPING_ID, API_ID FROM AM_API_PRODUCT_MAPPING";
 
     public static String GET_URL_MAPPINGS_WITH_SCOPE_BY_URL_MAPPING_ID = "SELECT AUM.HTTP_METHOD, AUM.AUTH_SCHEME, " +
@@ -825,5 +843,124 @@ public class APIMgtDAO {
             throw new APIMigrationException("Error occurred while converting input stream to string.", e);
         }
         return str;
+    }
+
+    /**
+     * This method is used to read labels from the table AM_LABELS and access URLs from the table AM_LABEL_URLS
+     *
+     * @return List of LabelDTO containing label details and access URLs
+     * @throws APIMigrationException if failed to read labels from the table
+     */
+    public List<LabelDTO> getLabels() throws APIMigrationException {
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(GET_LABEL_SQL)) {
+                try (ResultSet resultSet = ps.executeQuery()) {
+                    Map<String, LabelDTO> labelMap = new HashMap<>();
+                    while (resultSet.next()) {
+                        String label_id = resultSet.getString("LABEL_ID");
+                        if (labelMap.get(label_id) == null) {
+                            LabelDTO labelDTO = new LabelDTO();
+                            labelDTO.setLabelId(label_id);
+                            labelDTO.setName(resultSet.getString("NAME"));
+                            labelDTO.setDescription(resultSet.getString("DESCRIPTION"));
+                            labelDTO.setTenantDomain(resultSet.getString("TENANT_DOMAIN"));
+                            labelMap.put(label_id, labelDTO);
+                        }
+                        labelMap.get(label_id).getAccessUrls().add(resultSet.getString("ACCESS_URL"));
+                    }
+                    return new ArrayList<>(labelMap.values());
+                }
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to get data from AM_LABELS and AM_LABEL_URLS", ex);
+        }
+    }
+
+    /**
+     * This method is used to insert dynamic environments to the table AM_GATEWAY_ENVIRONMENT
+     * and VHosts to the table AM_GW_VHOST
+     *
+     * @param environments List of environments to be added to the table
+     * @throws APIMigrationException if failed to add environments and vhosts
+     */
+    public void addDynamicGatewayEnvironments(List<GatewayEnvironmentDTO> environments) throws APIMigrationException {
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps =
+                         conn.prepareStatement(INSERT_GATEWAY_ENVIRONMENT, new String[]{"ID"})) {
+                for (GatewayEnvironmentDTO environment : environments) {
+                    ps.setString(1, environment.getUuid());
+                    ps.setString(2, environment.getName());
+                    ps.setString(3, environment.getTenantDomain());
+                    ps.setString(4, environment.getDisplayName());
+                    ps.setString(5, environment.getDescription());
+                    ps.executeUpdate();
+
+                    ResultSet rs = ps.getGeneratedKeys();
+                    int id = -1;
+                    if (rs.next()) {
+                        id = rs.getInt(1);
+                    }
+                    addGatewayVhosts(conn, id, environment.getVhosts());
+                }
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw new APIMigrationException("Failed to add data to AM_GATEWAY_ENVIRONMENT table : ", ex);
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to add data to AM_GATEWAY_ENVIRONMENT table : ", ex);
+        }
+    }
+
+    /**
+     * This method is used to insert Vhosts to the table AM_GW_VHOST
+     *
+     * @param connection DB connection
+     * @param id ID of the dynamic environment
+     * @param vhosts VHost to be added
+     * @throws APIMigrationException if failed to insert data
+     */
+    private void addGatewayVhosts(Connection connection, int id, List<VHost> vhosts) throws
+            APIMigrationException {
+        try (PreparedStatement prepStmt = connection.prepareStatement(INSERT_VHOST)) {
+            for (VHost vhost : vhosts) {
+                prepStmt.setInt(1, id);
+                prepStmt.setString(2, vhost.getHost());
+                prepStmt.setString(3, vhost.getHttpContext());
+                prepStmt.setString(4, vhost.getHttpPort().toString());
+                prepStmt.setString(5, vhost.getHttpsPort().toString());
+                prepStmt.setString(6, vhost.getWsPort().toString());
+                prepStmt.setString(7, vhost.getWssPort().toString());
+                prepStmt.addBatch();
+            }
+            prepStmt.executeBatch();
+        } catch (SQLException e) {
+            throw new APIMigrationException("Failed to add data to AM_GW_VHOST table : ", e);
+        }
+    }
+
+    /**
+     * Drop AM_LABELS and AM_LABEL_URLS tables
+     *
+     * @throws APIMigrationException if failed to drop tables
+     */
+    public void dropLabelTable () throws APIMigrationException {
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            conn.setAutoCommit(false);
+            try (
+//                    PreparedStatement ps1 = conn.prepareStatement(DROP_AM_LABEL_URLS_TABLE)
+                    PreparedStatement ps2 = conn.prepareStatement(DROP_AM_LABELS_TABLE);
+            ) {
+//                ps1.executeUpdate();
+                ps2.executeUpdate();
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw new APIMigrationException("Failed to drop tables AM_LABELS and AM_LABEL_URLS : ", ex);
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to drop tables AM_LABELS and AM_LABEL_URLS : ", ex);
+        }
     }
 }
