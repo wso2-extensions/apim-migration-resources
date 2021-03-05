@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.apimgt.migration.dao;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -163,6 +164,42 @@ public class APIMgtDAO {
 
     public static final String REMOVE_PRODUCT_ENTRIES_IN_AM_API_PRODUCT_MAPPING =
             "DELETE FROM AM_API_PRODUCT_MAPPING WHERE URL_MAPPING_ID = ? AND API_ID = ?";
+
+    private static String GET_KEY_MAPPING =
+            "SELECT AM_APPLICATION_KEY_MAPPING.UUID AS KEY_ID, AM_KEY_MANAGER.UUID AS" +
+                    " KEY_MANAGER_ID " +
+                    "FROM " +
+                    "AM_APPLICATION_KEY_MAPPING " +
+                    "INNER JOIN AM_APPLICATION ON AM_APPLICATION_KEY_MAPPING.APPLICATION_ID=AM_APPLICATION.APPLICATION_ID " +
+                    "INNER JOIN AM_SUBSCRIBER ON AM_SUBSCRIBER.SUBSCRIBER_ID=AM_APPLICATION.SUBSCRIBER_ID " +
+                    "INNER JOIN AM_KEY_MANAGER ON AM_KEY_MANAGER.NAME=AM_APPLICATION_KEY_MAPPING.KEY_MANAGER " +
+                    "WHERE " +
+                    "AM_SUBSCRIBER.TENANT_ID = ? AND " +
+                    "AM_KEY_MANAGER.TENANT_DOMAIN = ?";
+
+    private static String GET_APP_REG =
+            "SELECT AM_APPLICATION_REGISTRATION.REG_ID AS REG_ID, AM_KEY_MANAGER.UUID AS" +
+                    " KEY_MANAGER_ID " +
+                    "FROM " +
+                    "AM_APPLICATION_REGISTRATION " +
+                    "INNER JOIN AM_APPLICATION ON AM_APPLICATION_REGISTRATION.APP_ID=AM_APPLICATION.APPLICATION_ID " +
+                    "INNER JOIN AM_SUBSCRIBER ON AM_SUBSCRIBER.SUBSCRIBER_ID=AM_APPLICATION.SUBSCRIBER_ID " +
+                    "INNER JOIN AM_KEY_MANAGER ON AM_KEY_MANAGER.NAME=AM_APPLICATION_REGISTRATION.KEY_MANAGER " +
+                    "WHERE " +
+                    "AM_SUBSCRIBER.TENANT_ID = ? AND " +
+                    "AM_KEY_MANAGER.TENANT_DOMAIN = ?";
+
+    private static String UPDATE_KEY_MAPPINGS =
+            "UPDATE AM_APPLICATION_KEY_MAPPING " +
+                    "SET KEY_MANAGER = ?" +
+                    "WHERE " +
+                    "AM_APPLICATION_KEY_MAPPING.UUID = ?";
+
+    private static String UPDATE_APP_REG =
+            "UPDATE AM_APPLICATION_REGISTRATION " +
+                    "SET KEY_MANAGER = ?" +
+                    "WHERE " +
+                    "AM_APPLICATION_REGISTRATION.REG_ID = ?";
 
     private APIMgtDAO() {
 
@@ -602,6 +639,117 @@ public class APIMgtDAO {
             throw new APIMigrationException("Exception when retrieving tenants", e);
         }
         return false;
+    }
+
+
+    /**
+     * This method is used to fetch and update the key mapping table with the key manager ID
+     *
+     * @throws APIMigrationException
+     */
+    public void replaceKeyMappingKMNamebyUUID(Tenant tenant) throws APIMigrationException {
+        try (Connection connection = APIMgtDBUtil.getConnection()) {
+            connection.setAutoCommit(false);
+            HashMap<String, String> results = new HashMap<>();
+            try {
+                try (PreparedStatement preparedStatement = connection.prepareStatement(GET_KEY_MAPPING)) {
+                    preparedStatement.setInt(1, tenant.getId());
+                    preparedStatement.setString(2, tenant.getDomain());
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            String keyID = resultSet.getString("KEY_ID");
+                            String keyManagerUUID = resultSet.getString("KEY_MANAGER_ID");
+                            results.put(keyID, keyManagerUUID);
+                        }
+                    }
+                }
+                updateKeyMappings(connection, results);
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new APIMigrationException("SQLException when executing: ".concat(GET_KEY_MAPPING), e);
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(GET_KEY_MAPPING), e);
+        }
+    }
+
+    /**
+     * This method is used to update the key mapping table with the key manager ID
+     *
+     * @throws APIMigrationException
+     */
+    public void updateKeyMappings(Connection connection, HashMap<String, String> keyMappingEntries)
+            throws APIMigrationException {
+        try {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_KEY_MAPPINGS)) {
+                for (String key : keyMappingEntries.keySet()) {
+                    preparedStatement.setString(1, keyMappingEntries.get(key));
+                    preparedStatement.setString(2, key);
+                    preparedStatement.addBatch();
+                }
+                preparedStatement.executeBatch();
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_KEY_MAPPINGS), e);
+        }
+    }
+
+
+    /**
+     * This method is used to fetch and update the app registration table with the key manager ID
+     *
+     * @throws APIMigrationException
+     */
+    public void replaceRegistrationKMNamebyUUID(Tenant tenant) throws APIMigrationException {
+        try (Connection connection = APIMgtDBUtil.getConnection()) {
+            try {
+                HashMap<Integer, String> results = new HashMap<>();
+                connection.setAutoCommit(false);
+                try (PreparedStatement preparedStatement = connection.prepareStatement(GET_APP_REG)) {
+                    preparedStatement.setInt(1, tenant.getId());
+                    preparedStatement.setString(2, tenant.getDomain());
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            Integer regID = resultSet.getInt("REG_ID");
+                            String keyManagerUUID = resultSet.getString("KEY_MANAGER_ID");
+                            results.put(regID, keyManagerUUID);
+                        }
+                    }
+                }
+                updateAppRegistration(connection, results);
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new APIMigrationException("SQLException when executing: ".concat(GET_APP_REG), e);
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(GET_APP_REG), e);
+        }
+    }
+
+    /**
+     * This method is used to update the app registration table with the key manager ID
+     *
+     * @throws APIMigrationException
+     */
+    public void updateAppRegistration(Connection connection, HashMap<Integer, String> registrationEntries)
+            throws APIMigrationException {
+        try {
+            if (registrationEntries == null || registrationEntries.size() == 0) {
+                return;
+            }
+            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_APP_REG)) {
+                for (Integer key : registrationEntries.keySet()) {
+                    preparedStatement.setString(1, registrationEntries.get(key));
+                    preparedStatement.setInt(2, key);
+                    preparedStatement.addBatch();
+                }
+                preparedStatement.executeBatch();
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_APP_REG), e);
+        }
     }
 
     /**

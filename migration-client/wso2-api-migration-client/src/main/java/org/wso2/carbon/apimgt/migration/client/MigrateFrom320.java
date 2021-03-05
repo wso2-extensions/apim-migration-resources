@@ -408,6 +408,17 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
         }
     }
 
+    public void replaceKMNamebyUUID()
+            throws APIMigrationException {
+        APIMgtDAO apiMgtDAO = APIMgtDAO.getInstance();
+
+        for (Tenant tenant : getTenantsArray()) {
+            apiMgtDAO.replaceKeyMappingKMNamebyUUID(tenant);
+            apiMgtDAO.replaceRegistrationKMNamebyUUID(tenant);
+        }
+
+    }
+  
     public void migrateLabelsToVhosts() {
         try {
             // retrieve labels
