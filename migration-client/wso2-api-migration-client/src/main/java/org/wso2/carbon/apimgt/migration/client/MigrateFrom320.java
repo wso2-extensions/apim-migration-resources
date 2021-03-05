@@ -327,7 +327,6 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                             }
                             Optional<Environment> optionalEnv = dynamicEnvironments.stream()
                                     .filter(e -> StringUtils.equals(e.getName(), label)).findFirst();
-                            // TODO: (renuka) shall we check existence and if not found, log warn and continue? without throwing an exception
                             Environment dynamicEnv = optionalEnv.orElseThrow(() -> new APIMigrationException(
                                     "Error while retrieving dynamic environment of the label: " + label
                             ));
@@ -419,7 +418,7 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
             for (LabelDTO labelDTO : labelDTOS) {
                 GatewayEnvironmentDTO environment = new GatewayEnvironmentDTO();
                 environment.setUuid(labelDTO.getLabelId());
-                // TODO: (renuka) do we want to check with configured environments in deployment toml
+                // skip checking an environment exists with the same name in deployment toml
                 // eg: label 'Default' and environment 'Default' in toml.
                 environment.setName(labelDTO.getName());
                 environment.setDisplayName(labelDTO.getName());
