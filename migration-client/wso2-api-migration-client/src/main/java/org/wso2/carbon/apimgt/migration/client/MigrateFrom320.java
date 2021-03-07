@@ -438,8 +438,9 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
 
                 List<VHost> vhosts = new ArrayList<>(labelDTO.getAccessUrls().size());
                 for (String accessUrl : labelDTO.getAccessUrls()) {
-                    // Hope to move 'fromEndpointUrls' function to another class, changing carbon version may
-                    // need to change this class
+                    if (!StringUtils.contains(accessUrl, VHost.PROTOCOL_SEPARATOR)) {
+                        accessUrl = VHost.HTTPS_PROTOCOL + VHost.PROTOCOL_SEPARATOR + accessUrl;
+                    }
                     VHost vhost = VHost.fromEndpointUrls(new String[]{accessUrl});
                     vhosts.add(vhost);
                 }

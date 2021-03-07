@@ -156,6 +156,9 @@ public class APIMMigrationService implements ServerStartupObserver {
                 identityScopeMigration.migrateScopes();
                 MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                if (V250.equals(migrateFromVersion) || V260.equals(migrateFromVersion)) {
+                    migrateFrom320.migrateLabelsToVhosts();
+                }
                 migrateFrom320.migrateProductMappingTable();
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
@@ -179,6 +182,7 @@ public class APIMMigrationService implements ServerStartupObserver {
                 identityScopeMigration.migrateScopes();
                 MigrateFrom320 migrateFrom320 = new MigrateFrom320(tenants, blackListTenants,
                         tenantRange, registryService, tenantManager);
+                migrateFrom320.migrateLabelsToVhosts();
                 migrateFrom320.migrateProductMappingTable();
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 migrateFrom320.apiRevisionRelatedMigration();
