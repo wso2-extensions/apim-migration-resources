@@ -28,7 +28,10 @@ import org.wso2.carbon.apimgt.api.model.APIProduct;
 import org.wso2.carbon.apimgt.api.APIProvider;
 import org.wso2.carbon.apimgt.api.model.APIRevision;
 import org.wso2.carbon.apimgt.api.model.APIRevisionDeployment;
+import org.wso2.carbon.apimgt.api.model.Environment;
+import org.wso2.carbon.apimgt.api.model.VHost;
 import org.wso2.carbon.apimgt.impl.certificatemgt.ResponseCode;
+import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
@@ -72,9 +75,11 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class MigrateFrom320 extends MigrationClientBase implements MigrationClient {
@@ -243,6 +248,8 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
             List<Tenant> tenants = APIUtil.getAllTenantsWithSuperTenant();
             for (Tenant tenant : tenants) {
                 List<APIInfoDTO> apiInfoDTOList = new ArrayList<>();
+                List<Environment> dynamicEnvironments = ApiMgtDAO.getInstance()
+                        .getAllEnvironments(tenant.getDomain());
                 int apiTenantId = tenantManager.getTenantId(tenant.getDomain());
                 APIUtil.loadTenantRegistry(apiTenantId);
                 startTenantFlow(tenant.getDomain(), apiTenantId,
@@ -297,16 +304,47 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                     }
                     // retrieve api artifacts
                     GenericArtifact apiArtifact = tenantArtifactManager.getGenericArtifact(apiInfoDTO.getUuid());
-                    List<APIRevisionDeployment> apiRevisionDeployments = new ArrayList<APIRevisionDeployment>();
-                    String environemnts = apiArtifact.getAttribute(APIConstants.API_OVERVIEW_ENVIRONMENTS);
-                    String[] arrOfEnvironments = environemnts.split(",");
+                    List<APIRevisionDeployment> apiRevisionDeployments = new ArrayList<>();
+                    String environments = apiArtifact.getAttribute(APIConstants.API_OVERVIEW_ENVIRONMENTS);
+                    String[] arrOfEnvironments = environments.split(",");
                     for (String environment : arrOfEnvironments) {
                         APIRevisionDeployment apiRevisionDeployment = new APIRevisionDeployment();
                         apiRevisionDeployment.setRevisionUUID(revisionId);
                         apiRevisionDeployment.setDeployment(environment);
+                        // Null VHost for the environments defined in deployment.toml (the default vhost)
+                        apiRevisionDeployment.setVhost(null);
                         apiRevisionDeployment.setDisplayOnDevportal(true);
                         apiRevisionDeployments.add(apiRevisionDeployment);
                     }
+
+                    String[] labels = apiArtifact.getAttributes(APIConstants.API_LABELS_GATEWAY_LABELS);
+                    if (labels != null) {
+                        for (String label : labels) {
+                            if (Arrays.stream(arrOfEnvironments).anyMatch(tomlEnv -> StringUtils.equals(tomlEnv, label))) {
+                                // if API is deployed to an environment and label with the same name,
+                                // discard deployment to dynamic environment
+                                continue;
+                            }
+                            Optional<Environment> optionalEnv = dynamicEnvironments.stream()
+                                    .filter(e -> StringUtils.equals(e.getName(), label)).findFirst();
+                            Environment dynamicEnv = optionalEnv.orElseThrow(() -> new APIMigrationException(
+                                    "Error while retrieving dynamic environment of the label: " + label
+                            ));
+                            List<VHost> vhosts = dynamicEnv.getVhosts();
+                            if (vhosts.size() > 0) {
+                                APIRevisionDeployment apiRevisionDeployment = new APIRevisionDeployment();
+                                apiRevisionDeployment.setRevisionUUID(revisionId);
+                                apiRevisionDeployment.setDeployment(dynamicEnv.getName());
+                                apiRevisionDeployment.setVhost(vhosts.get(0).getHost());
+                                apiRevisionDeployment.setDisplayOnDevportal(true);
+                                apiRevisionDeployments.add(apiRevisionDeployment);
+                            } else {
+                                throw new APIMigrationException("Vhosts are empty for the dynamic environment: "
+                                        + dynamicEnv.getName());
+                            }
+                        }
+                    }
+
                     if (!apiRevisionDeployments.isEmpty()) {
                         if (!StringUtils.equalsIgnoreCase(apiInfoDTO.getType(), APIConstants.API_PRODUCT)) {
                             apiProviderTenant.deployAPIRevision(apiInfoDTO.getUuid(), revisionId,
@@ -367,6 +405,54 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
         } catch (NoSuchAlgorithmException | IOException | CertificateException
                 | KeyStoreException | APIMigrationException e) {
             log.error("Error while Migrating Endpoint Certificates", e);
+        }
+    }
+
+    public void replaceKMNamebyUUID()
+            throws APIMigrationException {
+        APIMgtDAO apiMgtDAO = APIMgtDAO.getInstance();
+
+        for (Tenant tenant : getTenantsArray()) {
+            apiMgtDAO.replaceKeyMappingKMNamebyUUID(tenant);
+            apiMgtDAO.replaceRegistrationKMNamebyUUID(tenant);
+        }
+
+    }
+  
+    public void migrateLabelsToVhosts() {
+        try {
+            // retrieve labels
+            List<LabelDTO> labelDTOS = apiMgtDAO.getLabels();
+            List<GatewayEnvironmentDTO> environments = new ArrayList<>(labelDTOS.size());
+
+            // converts to dynamic environments
+            for (LabelDTO labelDTO : labelDTOS) {
+                GatewayEnvironmentDTO environment = new GatewayEnvironmentDTO();
+                environment.setUuid(labelDTO.getLabelId());
+                // skip checking an environment exists with the same name in deployment toml
+                // eg: label 'Default' and environment 'Default' in toml.
+                environment.setName(labelDTO.getName());
+                environment.setDisplayName(labelDTO.getName());
+                environment.setDescription(labelDTO.getDescription());
+                environment.setTenantDomain(labelDTO.getTenantDomain());
+
+                List<VHost> vhosts = new ArrayList<>(labelDTO.getAccessUrls().size());
+                for (String accessUrl : labelDTO.getAccessUrls()) {
+                    // Hope to move 'fromEndpointUrls' function to another class, changing carbon version may
+                    // need to change this class
+                    VHost vhost = VHost.fromEndpointUrls(new String[]{accessUrl});
+                    vhosts.add(vhost);
+                }
+                environment.setVhosts(vhosts);
+                environments.add(environment);
+            }
+            // insert dynamic environments
+            apiMgtDAO.addDynamicGatewayEnvironments(environments);
+            apiMgtDAO.dropLabelTable();
+        } catch (APIMigrationException e) {
+            log.error("Error while Reading Labels", e);
+        } catch (APIManagementException e) {
+            log.error("Error while Converting Endpoint URLs to VHost", e);
         }
     }
 }
