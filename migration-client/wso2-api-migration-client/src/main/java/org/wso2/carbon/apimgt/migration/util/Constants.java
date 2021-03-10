@@ -46,7 +46,6 @@ public class Constants {
     // Migration client argument property names
     public static final String ARG_RUN_SPECIFIC_VERSION = "runSpecificVersion";
     public static final String ARG_MIGRATE_FROM_VERSION = "migrateFromVersion";
-    public static final String ARG_IGNORE_CROSS_TENANT_SUBSCRIPTIONS = "ignoreCrossTenantSubscriptions";
     public static final String ARG_OPTIONS = "options";
     public static final String ARG_COMPONENT = "component";
     public static final String ARG_MIGRATE_TENANTS = "tenants";
