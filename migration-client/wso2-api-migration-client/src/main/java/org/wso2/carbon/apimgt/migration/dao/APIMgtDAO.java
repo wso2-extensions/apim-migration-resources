@@ -59,6 +59,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.wso2.carbon.user.api.Tenant;
+import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
+
 public class APIMgtDAO {
 
     private static final Log log = LogFactory.getLog(APIMgtDAO.class);
