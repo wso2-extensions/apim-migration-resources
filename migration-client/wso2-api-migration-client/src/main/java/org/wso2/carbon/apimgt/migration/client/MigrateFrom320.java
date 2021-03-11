@@ -172,64 +172,66 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                 this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceSystemRegistry(apiTenantId);
                 GenericArtifactManager tenantArtifactManager = APIUtil.getArtifactManager(this.registry,
                         APIConstants.API_KEY);
-                GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
-                for (GenericArtifact artifact : tenantArtifacts) {
-                    API api = APIUtil.getAPI(artifact);
-                    if (api != null) {
-                        APIInfoDTO apiInfoDTO = new APIInfoDTO();
-                        apiInfoDTO.setUuid(api.getUUID());
-                        apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
-                        apiInfoDTO.setApiName(api.getId().getApiName());
-                        apiInfoDTO.setApiVersion(api.getId().getVersion());
-                        apiInfoDTOList.add(apiInfoDTO);
+                if (tenantArtifactManager != null) {
+                    GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
+                    for (GenericArtifact artifact : tenantArtifacts) {
+                        API api = APIUtil.getAPI(artifact);
+                        if (api != null) {
+                            APIInfoDTO apiInfoDTO = new APIInfoDTO();
+                            apiInfoDTO.setUuid(api.getUUID());
+                            apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
+                            apiInfoDTO.setApiName(api.getId().getApiName());
+                            apiInfoDTO.setApiVersion(api.getId().getVersion());
+                            apiInfoDTOList.add(apiInfoDTO);
+                        }
                     }
-                }
-                for (APIInfoDTO apiInfoDTO : apiInfoDTOList) {
-                    String apiPath = GovernanceUtils.getArtifactPath(registry, apiInfoDTO.getUuid());
-                    int prependIndex = apiPath.lastIndexOf("/api");
-                    String artifactPath = apiPath.substring(0, prependIndex);
-                    String artifactOldPathIcon = APIConstants.API_IMAGE_LOCATION + RegistryConstants.PATH_SEPARATOR
-                            + apiInfoDTO.getApiProvider() + RegistryConstants.PATH_SEPARATOR + apiInfoDTO.getApiName()
-                            + RegistryConstants.PATH_SEPARATOR + apiInfoDTO.getApiVersion()
-                            + RegistryConstants.PATH_SEPARATOR + APIConstants.API_ICON_IMAGE;
-                    if (registry.resourceExists(artifactOldPathIcon)) {
-                        Resource resource = registry.get(artifactOldPathIcon);
-                        String thumbPath = artifactPath + RegistryConstants.PATH_SEPARATOR
-                                + APIConstants.API_ICON_IMAGE;
-                        registry.put(thumbPath, resource);
-                        GenericArtifact apiArtifact = tenantArtifactManager.getGenericArtifact(apiInfoDTO.getUuid());
-                        apiArtifact.setAttribute(APIConstants.API_OVERVIEW_THUMBNAIL_URL, thumbPath);
-                        tenantArtifactManager.updateGenericArtifact(apiArtifact);
-                    }
-                    startTenantFlow(tenant.getDomain(), apiTenantId,
-                            MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())));
-                    String wsdlResourcePathOld = APIConstants.API_WSDL_RESOURCE_LOCATION
-                            + RegistryPersistenceUtil.createWsdlFileName(apiInfoDTO.getApiProvider(),
-                            apiInfoDTO.getApiName(), apiInfoDTO.getApiVersion());
-                    if (registry.resourceExists(wsdlResourcePathOld)) {
-                        Resource resource = registry.get(wsdlResourcePathOld);
-                        String wsdlResourcePath;
-                        String wsdlResourcePathArchive = artifactPath + RegistryConstants.PATH_SEPARATOR
-                                + APIConstants.API_WSDL_ARCHIVE_LOCATION + apiInfoDTO.getApiProvider()
-                                + APIConstants.WSDL_PROVIDER_SEPERATOR + apiInfoDTO.getApiName()
-                                + apiInfoDTO.getApiVersion() + APIConstants.ZIP_FILE_EXTENSION;
-                        String wsdlResourcePathFile = artifactPath + RegistryConstants.PATH_SEPARATOR
+                    for (APIInfoDTO apiInfoDTO : apiInfoDTOList) {
+                        String apiPath = GovernanceUtils.getArtifactPath(registry, apiInfoDTO.getUuid());
+                        int prependIndex = apiPath.lastIndexOf("/api");
+                        String artifactPath = apiPath.substring(0, prependIndex);
+                        String artifactOldPathIcon = APIConstants.API_IMAGE_LOCATION + RegistryConstants.PATH_SEPARATOR
+                                + apiInfoDTO.getApiProvider() + RegistryConstants.PATH_SEPARATOR + apiInfoDTO.getApiName()
+                                + RegistryConstants.PATH_SEPARATOR + apiInfoDTO.getApiVersion()
+                                + RegistryConstants.PATH_SEPARATOR + APIConstants.API_ICON_IMAGE;
+                        if (registry.resourceExists(artifactOldPathIcon)) {
+                            Resource resource = registry.get(artifactOldPathIcon);
+                            String thumbPath = artifactPath + RegistryConstants.PATH_SEPARATOR
+                                    + APIConstants.API_ICON_IMAGE;
+                            registry.put(thumbPath, resource);
+                            GenericArtifact apiArtifact = tenantArtifactManager.getGenericArtifact(apiInfoDTO.getUuid());
+                            apiArtifact.setAttribute(APIConstants.API_OVERVIEW_THUMBNAIL_URL, thumbPath);
+                            tenantArtifactManager.updateGenericArtifact(apiArtifact);
+                        }
+                        startTenantFlow(tenant.getDomain(), apiTenantId,
+                                MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())));
+                        String wsdlResourcePathOld = APIConstants.API_WSDL_RESOURCE_LOCATION
                                 + RegistryPersistenceUtil.createWsdlFileName(apiInfoDTO.getApiProvider(),
                                 apiInfoDTO.getApiName(), apiInfoDTO.getApiVersion());
-                        if (APIConstants.APPLICATION_ZIP.equals(resource.getMediaType())) {
-                            wsdlResourcePath = wsdlResourcePathArchive;
-                        } else {
-                            wsdlResourcePath = wsdlResourcePathFile;
+                        if (registry.resourceExists(wsdlResourcePathOld)) {
+                            Resource resource = registry.get(wsdlResourcePathOld);
+                            String wsdlResourcePath;
+                            String wsdlResourcePathArchive = artifactPath + RegistryConstants.PATH_SEPARATOR
+                                    + APIConstants.API_WSDL_ARCHIVE_LOCATION + apiInfoDTO.getApiProvider()
+                                    + APIConstants.WSDL_PROVIDER_SEPERATOR + apiInfoDTO.getApiName()
+                                    + apiInfoDTO.getApiVersion() + APIConstants.ZIP_FILE_EXTENSION;
+                            String wsdlResourcePathFile = artifactPath + RegistryConstants.PATH_SEPARATOR
+                                    + RegistryPersistenceUtil.createWsdlFileName(apiInfoDTO.getApiProvider(),
+                                    apiInfoDTO.getApiName(), apiInfoDTO.getApiVersion());
+                            if (APIConstants.APPLICATION_ZIP.equals(resource.getMediaType())) {
+                                wsdlResourcePath = wsdlResourcePathArchive;
+                            } else {
+                                wsdlResourcePath = wsdlResourcePathFile;
+                            }
+                            registry.copy(wsdlResourcePathOld, wsdlResourcePath);
+                            GenericArtifact apiArtifact = tenantArtifactManager.getGenericArtifact(apiInfoDTO.getUuid());
+                            String absoluteWSDLResourcePath = RegistryUtils
+                                    .getAbsolutePath(RegistryContext.getBaseInstance(),
+                                            RegistryConstants.GOVERNANCE_REGISTRY_BASE_PATH) + wsdlResourcePath;
+                            String wsdlRegistryPath = RegistryConstants.PATH_SEPARATOR + "registry" +
+                                    RegistryConstants.PATH_SEPARATOR + "resource" + absoluteWSDLResourcePath;
+                            apiArtifact.setAttribute(APIConstants.API_OVERVIEW_WSDL, wsdlRegistryPath);
+                            tenantArtifactManager.updateGenericArtifact(apiArtifact);
                         }
-                        registry.copy(wsdlResourcePathOld, wsdlResourcePath);
-                        GenericArtifact apiArtifact = tenantArtifactManager.getGenericArtifact(apiInfoDTO.getUuid());
-                        String absoluteWSDLResourcePath = RegistryUtils
-                                .getAbsolutePath(RegistryContext.getBaseInstance(),
-                                        RegistryConstants.GOVERNANCE_REGISTRY_BASE_PATH) + wsdlResourcePath;
-                        String wsdlRegistryPath = RegistryConstants.PATH_SEPARATOR + "registry" +
-                                RegistryConstants.PATH_SEPARATOR + "resource" + absoluteWSDLResourcePath;
-                        apiArtifact.setAttribute(APIConstants.API_OVERVIEW_WSDL, wsdlRegistryPath);
-                        tenantArtifactManager.updateGenericArtifact(apiArtifact);
                     }
                 }
                 PrivilegedCarbonContext.endTenantFlow();
@@ -257,101 +259,103 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                 this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceSystemRegistry(apiTenantId);
                 GenericArtifactManager tenantArtifactManager = APIUtil.getArtifactManager(this.registry,
                         APIConstants.API_KEY);
-                GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
-                APIProvider apiProviderTenant = APIManagerFactory.getInstance().getAPIProvider(
-                        APIUtil.getTenantAdminUserName(tenant.getDomain()));
-                for (GenericArtifact artifact : tenantArtifacts) {
-                    if (!StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_STATUS),
-                            org.wso2.carbon.apimgt.impl.APIConstants.CREATED) &&
-                            !StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_STATUS),
-                            org.wso2.carbon.apimgt.impl.APIConstants.RETIRED)) {
-                        if (!StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_TYPE),
-                                APIConstants.API_PRODUCT)) {
-                            API api = APIUtil.getAPI(artifact);
-                            if (api != null) {
-                                APIInfoDTO apiInfoDTO = new APIInfoDTO();
-                                apiInfoDTO.setUuid(api.getUUID());
-                                apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
-                                apiInfoDTO.setApiName(api.getId().getApiName());
-                                apiInfoDTO.setApiVersion(api.getId().getVersion());
-                                apiInfoDTO.setType(api.getType());
-                                apiInfoDTOList.add(apiInfoDTO);
-                            }
-                        } else {
-                            APIProduct apiProduct = APIUtil.getAPIProduct(artifact, this.registry);
-                            if (apiProduct != null) {
-                                APIInfoDTO apiInfoDTO = new APIInfoDTO();
-                                apiInfoDTO.setUuid(apiProduct.getUuid());
-                                apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(apiProduct.getId().getProviderName()));
-                                apiInfoDTO.setApiName(apiProduct.getId().getName());
-                                apiInfoDTO.setApiVersion(apiProduct.getId().getVersion());
-                                apiInfoDTO.setType(apiProduct.getType());
-                                apiInfoDTOList.add(apiInfoDTO);
-                            }
-                        }
-                    }
-                }
-                for (APIInfoDTO apiInfoDTO : apiInfoDTOList) {
-                    //adding the revision
-                    APIRevision apiRevision = new APIRevision();
-                    apiRevision.setApiUUID(apiInfoDTO.getUuid());
-                    apiRevision.setDescription("Initial revision created in migration process");
-                    String revisionId;
-                    if (!StringUtils.equalsIgnoreCase(apiInfoDTO.getType(), APIConstants.API_PRODUCT)) {
-                        revisionId = apiProviderTenant.addAPIRevision(apiRevision, tenant.getDomain());
-                    } else {
-                        revisionId = apiProviderTenant.addAPIProductRevision(apiRevision);
-                    }
-                    // retrieve api artifacts
-                    GenericArtifact apiArtifact = tenantArtifactManager.getGenericArtifact(apiInfoDTO.getUuid());
-                    List<APIRevisionDeployment> apiRevisionDeployments = new ArrayList<>();
-                    String environments = apiArtifact.getAttribute(APIConstants.API_OVERVIEW_ENVIRONMENTS);
-                    String[] arrOfEnvironments = environments.split(",");
-                    for (String environment : arrOfEnvironments) {
-                        APIRevisionDeployment apiRevisionDeployment = new APIRevisionDeployment();
-                        apiRevisionDeployment.setRevisionUUID(revisionId);
-                        apiRevisionDeployment.setDeployment(environment);
-                        // Null VHost for the environments defined in deployment.toml (the default vhost)
-                        apiRevisionDeployment.setVhost(null);
-                        apiRevisionDeployment.setDisplayOnDevportal(true);
-                        apiRevisionDeployments.add(apiRevisionDeployment);
-                    }
-
-                    String[] labels = apiArtifact.getAttributes(APIConstants.API_LABELS_GATEWAY_LABELS);
-                    if (labels != null) {
-                        for (String label : labels) {
-                            if (Arrays.stream(arrOfEnvironments).anyMatch(tomlEnv -> StringUtils.equals(tomlEnv, label))) {
-                                // if API is deployed to an environment and label with the same name,
-                                // discard deployment to dynamic environment
-                                continue;
-                            }
-                            Optional<Environment> optionalEnv = dynamicEnvironments.stream()
-                                    .filter(e -> StringUtils.equals(e.getName(), label)).findFirst();
-                            Environment dynamicEnv = optionalEnv.orElseThrow(() -> new APIMigrationException(
-                                    "Error while retrieving dynamic environment of the label: " + label
-                            ));
-                            List<VHost> vhosts = dynamicEnv.getVhosts();
-                            if (vhosts.size() > 0) {
-                                APIRevisionDeployment apiRevisionDeployment = new APIRevisionDeployment();
-                                apiRevisionDeployment.setRevisionUUID(revisionId);
-                                apiRevisionDeployment.setDeployment(dynamicEnv.getName());
-                                apiRevisionDeployment.setVhost(vhosts.get(0).getHost());
-                                apiRevisionDeployment.setDisplayOnDevportal(true);
-                                apiRevisionDeployments.add(apiRevisionDeployment);
+                if (tenantArtifactManager != null) {
+                    GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
+                    APIProvider apiProviderTenant = APIManagerFactory.getInstance().getAPIProvider(
+                            APIUtil.getTenantAdminUserName(tenant.getDomain()));
+                    for (GenericArtifact artifact : tenantArtifacts) {
+                        if (!StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_STATUS),
+                                org.wso2.carbon.apimgt.impl.APIConstants.CREATED) &&
+                                !StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_STATUS),
+                                        org.wso2.carbon.apimgt.impl.APIConstants.RETIRED)) {
+                            if (!StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_TYPE),
+                                    APIConstants.API_PRODUCT)) {
+                                API api = APIUtil.getAPI(artifact);
+                                if (api != null) {
+                                    APIInfoDTO apiInfoDTO = new APIInfoDTO();
+                                    apiInfoDTO.setUuid(api.getUUID());
+                                    apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
+                                    apiInfoDTO.setApiName(api.getId().getApiName());
+                                    apiInfoDTO.setApiVersion(api.getId().getVersion());
+                                    apiInfoDTO.setType(api.getType());
+                                    apiInfoDTOList.add(apiInfoDTO);
+                                }
                             } else {
-                                throw new APIMigrationException("Vhosts are empty for the dynamic environment: "
-                                        + dynamicEnv.getName());
+                                APIProduct apiProduct = APIUtil.getAPIProduct(artifact, this.registry);
+                                if (apiProduct != null) {
+                                    APIInfoDTO apiInfoDTO = new APIInfoDTO();
+                                    apiInfoDTO.setUuid(apiProduct.getUuid());
+                                    apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(apiProduct.getId().getProviderName()));
+                                    apiInfoDTO.setApiName(apiProduct.getId().getName());
+                                    apiInfoDTO.setApiVersion(apiProduct.getId().getVersion());
+                                    apiInfoDTO.setType(apiProduct.getType());
+                                    apiInfoDTOList.add(apiInfoDTO);
+                                }
                             }
                         }
                     }
-
-                    if (!apiRevisionDeployments.isEmpty()) {
+                    for (APIInfoDTO apiInfoDTO : apiInfoDTOList) {
+                        //adding the revision
+                        APIRevision apiRevision = new APIRevision();
+                        apiRevision.setApiUUID(apiInfoDTO.getUuid());
+                        apiRevision.setDescription("Initial revision created in migration process");
+                        String revisionId;
                         if (!StringUtils.equalsIgnoreCase(apiInfoDTO.getType(), APIConstants.API_PRODUCT)) {
-                            apiProviderTenant.deployAPIRevision(apiInfoDTO.getUuid(), revisionId,
-                                    apiRevisionDeployments);
+                            revisionId = apiProviderTenant.addAPIRevision(apiRevision, tenant.getDomain());
                         } else {
-                            apiProviderTenant.deployAPIProductRevision(apiInfoDTO.getUuid(), revisionId,
-                                    apiRevisionDeployments);
+                            revisionId = apiProviderTenant.addAPIProductRevision(apiRevision);
+                        }
+                        // retrieve api artifacts
+                        GenericArtifact apiArtifact = tenantArtifactManager.getGenericArtifact(apiInfoDTO.getUuid());
+                        List<APIRevisionDeployment> apiRevisionDeployments = new ArrayList<>();
+                        String environments = apiArtifact.getAttribute(APIConstants.API_OVERVIEW_ENVIRONMENTS);
+                        String[] arrOfEnvironments = environments.split(",");
+                        for (String environment : arrOfEnvironments) {
+                            APIRevisionDeployment apiRevisionDeployment = new APIRevisionDeployment();
+                            apiRevisionDeployment.setRevisionUUID(revisionId);
+                            apiRevisionDeployment.setDeployment(environment);
+                            // Null VHost for the environments defined in deployment.toml (the default vhost)
+                            apiRevisionDeployment.setVhost(null);
+                            apiRevisionDeployment.setDisplayOnDevportal(true);
+                            apiRevisionDeployments.add(apiRevisionDeployment);
+                        }
+
+                        String[] labels = apiArtifact.getAttributes(APIConstants.API_LABELS_GATEWAY_LABELS);
+                        if (labels != null) {
+                            for (String label : labels) {
+                                if (Arrays.stream(arrOfEnvironments).anyMatch(tomlEnv -> StringUtils.equals(tomlEnv, label))) {
+                                    // if API is deployed to an environment and label with the same name,
+                                    // discard deployment to dynamic environment
+                                    continue;
+                                }
+                                Optional<Environment> optionalEnv = dynamicEnvironments.stream()
+                                        .filter(e -> StringUtils.equals(e.getName(), label)).findFirst();
+                                Environment dynamicEnv = optionalEnv.orElseThrow(() -> new APIMigrationException(
+                                        "Error while retrieving dynamic environment of the label: " + label
+                                ));
+                                List<VHost> vhosts = dynamicEnv.getVhosts();
+                                if (vhosts.size() > 0) {
+                                    APIRevisionDeployment apiRevisionDeployment = new APIRevisionDeployment();
+                                    apiRevisionDeployment.setRevisionUUID(revisionId);
+                                    apiRevisionDeployment.setDeployment(dynamicEnv.getName());
+                                    apiRevisionDeployment.setVhost(vhosts.get(0).getHost());
+                                    apiRevisionDeployment.setDisplayOnDevportal(true);
+                                    apiRevisionDeployments.add(apiRevisionDeployment);
+                                } else {
+                                    throw new APIMigrationException("Vhosts are empty for the dynamic environment: "
+                                            + dynamicEnv.getName());
+                                }
+                            }
+                        }
+
+                        if (!apiRevisionDeployments.isEmpty()) {
+                            if (!StringUtils.equalsIgnoreCase(apiInfoDTO.getType(), APIConstants.API_PRODUCT)) {
+                                apiProviderTenant.deployAPIRevision(apiInfoDTO.getUuid(), revisionId,
+                                        apiRevisionDeployments);
+                            } else {
+                                apiProviderTenant.deployAPIProductRevision(apiInfoDTO.getUuid(), revisionId,
+                                        apiRevisionDeployments);
+                            }
                         }
                     }
                 }
