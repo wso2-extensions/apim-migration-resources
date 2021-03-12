@@ -73,17 +73,19 @@ public class MigrateUUIDToDB extends MigrationClientBase{
                             ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceSystemRegistry(apiTenantId);
                     GenericArtifactManager tenantArtifactManager = APIUtil.getArtifactManager(registry,
                             APIConstants.API_KEY);
-                    GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
-                    for (GenericArtifact artifact : tenantArtifacts) {
-                        API api = APIUtil.getAPI(artifact);
-                        if (api != null) {
-                            APIInfoDTO apiInfoDTO = new APIInfoDTO();
-                            apiInfoDTO.setUuid(api.getUUID());
-                            apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
-                            apiInfoDTO.setApiName(api.getId().getApiName());
-                            apiInfoDTO.setApiVersion(api.getId().getVersion());
-                            apiInfoDTO.setStatus(api.getStatus());
-                            apiInfoDTOList.add(apiInfoDTO);
+                    if (tenantArtifactManager != null) {
+                        GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
+                        for (GenericArtifact artifact : tenantArtifacts) {
+                            API api = APIUtil.getAPI(artifact);
+                            if (api != null) {
+                                APIInfoDTO apiInfoDTO = new APIInfoDTO();
+                                apiInfoDTO.setUuid(api.getUUID());
+                                apiInfoDTO.setApiProvider(APIUtil.replaceEmailDomainBack(api.getId().getProviderName()));
+                                apiInfoDTO.setApiName(api.getId().getApiName());
+                                apiInfoDTO.setApiVersion(api.getId().getVersion());
+                                apiInfoDTO.setStatus(api.getStatus());
+                                apiInfoDTOList.add(apiInfoDTO);
+                            }
                         }
                     }
                 } finally {

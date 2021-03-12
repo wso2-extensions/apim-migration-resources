@@ -191,13 +191,13 @@ public class APIMgtDAO {
 
     private static String UPDATE_KEY_MAPPINGS =
             "UPDATE AM_APPLICATION_KEY_MAPPING " +
-                    "SET KEY_MANAGER = ?" +
+                    "SET KEY_MANAGER = ? " +
                     "WHERE " +
                     "AM_APPLICATION_KEY_MAPPING.UUID = ?";
 
     private static String UPDATE_APP_REG =
             "UPDATE AM_APPLICATION_REGISTRATION " +
-                    "SET KEY_MANAGER = ?" +
+                    "SET KEY_MANAGER = ? " +
                     "WHERE " +
                     "AM_APPLICATION_REGISTRATION.REG_ID = ?";
 
