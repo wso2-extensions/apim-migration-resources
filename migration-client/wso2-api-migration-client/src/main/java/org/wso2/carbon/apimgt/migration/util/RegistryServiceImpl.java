@@ -434,12 +434,6 @@ public class RegistryServiceImpl implements RegistryService {
                 artifact.setAttribute(Constants.API_OVERVIEW_TYPE, Constants.API_TYPE_HTTP);
                 isResourceUpdated = true;
             }
-            // Add URI Templates for WS APIs, otherwise cannot invoke those after the migration
-            if (StringUtils.equals(overview_type, Constants.API_TYPE_WS)) {
-                int id = Integer.parseInt(APIMgtDAO.getInstance().getAPIID(
-                        artifact.getAttribute(Constants.API_OVERVIEW_CONTEXT)));
-                APIMgtDAO.getInstance().addURLTemplatesForWSAPIs(id);
-            }
             if (isResourceUpdated) {
                 artifactManager.updateGenericArtifact(artifact);
             }
@@ -447,8 +441,6 @@ public class RegistryServiceImpl implements RegistryService {
             log.error("Error occurred when updating GenericArtifacts in registry", e);
         } catch (APIManagementException e) {
             log.error("Error occurred when getting artifact manager", e);
-        } catch (APIMigrationException e) {
-            log.error("Error occurred when getting apiId", e);
         }
     }
 
