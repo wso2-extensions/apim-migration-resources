@@ -18,7 +18,6 @@ package org.wso2.carbon.apimgt.migration.client;
 
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationException;
-import org.wso2.carbon.user.core.tenant.TenantManager;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -118,16 +117,4 @@ public interface MigrationClient {
      * @throws APIMigrationException
      */
     void updateScopeRoleMappings() throws APIMigrationException;
-
-    /**
-     * This method is used to check the existence of cross tenant subscriptions
-     * during the migrations to 3.2
-     *
-     * @param tenantManager                  Tenant Manager
-     * @param ignoreCrossTenantSubscriptions Whether to ignore the validation and proceed with migration
-     * @throws APIMigrationException
-     */
-    void checkCrossTenantAPISubscriptions(TenantManager tenantManager, boolean ignoreCrossTenantSubscriptions)
-            throws APIMigrationException;
-
 }
