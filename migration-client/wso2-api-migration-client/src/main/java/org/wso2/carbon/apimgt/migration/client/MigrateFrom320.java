@@ -39,6 +39,7 @@ import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationException;
 import org.wso2.carbon.apimgt.migration.dao.APIMgtDAO;
 import org.wso2.carbon.apimgt.migration.dto.*;
+import org.wso2.carbon.apimgt.migration.util.Constants;
 import org.wso2.carbon.apimgt.migration.util.RegistryService;
 import org.wso2.carbon.apimgt.persistence.APIConstants;
 import org.wso2.carbon.apimgt.persistence.utils.RegistryPersistenceUtil;
@@ -81,6 +82,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import com.google.gson.Gson;
 
 public class MigrateFrom320 extends MigrationClientBase implements MigrationClient {
 
@@ -453,6 +455,51 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
             log.error("Error while Reading Labels", e);
         } catch (APIManagementException e) {
             log.error("Error while Converting Endpoint URLs to VHost", e);
+        }
+    }
+
+    public void migrateWebSocketAPI() {
+        try {
+            // migrate registry artifacts
+            List<Integer> wsAPIs = new ArrayList<>();
+            List<Tenant> tenants = APIUtil.getAllTenantsWithSuperTenant();
+            Map<String, String> wsUriMapping = new HashMap<>();
+            for (Tenant tenant : tenants) {
+                int apiTenantId = tenantManager.getTenantId(tenant.getDomain());
+                APIUtil.loadTenantRegistry(apiTenantId);
+                startTenantFlow(tenant.getDomain(), apiTenantId,
+                        MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())));
+                this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceSystemRegistry(apiTenantId);
+                GenericArtifactManager tenantArtifactManager = APIUtil.getArtifactManager(this.registry,
+                        APIConstants.API_KEY);
+                if (tenantArtifactManager != null) {
+                    GenericArtifact[] tenantArtifacts = tenantArtifactManager.getAllGenericArtifacts();
+                    for (GenericArtifact artifact : tenantArtifacts) {
+                        if (StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_TYPE),
+                                APIConstants.APITransportType.WS.toString())) {
+                            int id = Integer.parseInt(APIMgtDAO.getInstance().getAPIID(
+                                    artifact.getAttribute(Constants.API_OVERVIEW_CONTEXT)));
+                            wsAPIs.add(id);
+                            artifact.setAttribute(APIConstants.API_OVERVIEW_WS_URI_MAPPING,
+                                    new Gson().toJson(wsUriMapping));
+                            tenantArtifactManager.updateGenericArtifact(artifact);
+                        }
+                    }
+                }
+                PrivilegedCarbonContext.endTenantFlow();
+            }
+            // Remove previous entries(In 3.x we are setting default REST methods with /*)
+            apiMgtDAO.removePreviousURLTemplatesForWSAPIs(wsAPIs);
+            //  add default url templates
+            apiMgtDAO.addDefaultURLTemplatesForWSAPIs(wsAPIs);
+        } catch (RegistryException e) {
+            log.error("Error while intitiation the registry", e);
+        } catch (UserStoreException e) {
+            log.error("Error while retrieving the tenants", e);
+        } catch (APIManagementException e) {
+            log.error("Error while Retrieving API artifact from the registry", e);
+        } catch (APIMigrationException e) {
+            log.error("Error while migrating WebSocket APIs", e);
         }
     }
 }
