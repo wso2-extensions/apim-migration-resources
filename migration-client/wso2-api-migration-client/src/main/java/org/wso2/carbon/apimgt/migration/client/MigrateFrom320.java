@@ -39,6 +39,7 @@ import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationException;
 import org.wso2.carbon.apimgt.migration.dao.APIMgtDAO;
 import org.wso2.carbon.apimgt.migration.dto.*;
+import org.wso2.carbon.apimgt.migration.util.Constants;
 import org.wso2.carbon.apimgt.migration.util.RegistryService;
 import org.wso2.carbon.apimgt.persistence.APIConstants;
 import org.wso2.carbon.apimgt.persistence.utils.RegistryPersistenceUtil;
@@ -459,13 +460,8 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
 
     public void migrateWebSocketAPI() {
         try {
-            // retrieve WebSocket APIs
-            List<Integer> wsAPIs = apiMgtDAO.retrieveWebSocketAPIs();
-            // Remove previous entries(In 3.x we are setting default REST methods with /*)
-            apiMgtDAO.removePreviousURLTemplatesForWSAPIs(wsAPIs);
-            //  add default url templates
-            apiMgtDAO.addDefaultURLTemplatesForWSAPIs(wsAPIs);
             // migrate registry artifacts
+            List<Integer> wsAPIs = new ArrayList<>();
             List<Tenant> tenants = APIUtil.getAllTenantsWithSuperTenant();
             Map<String, String> wsUriMapping = new HashMap<>();
             for (Tenant tenant : tenants) {
@@ -481,6 +477,9 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                     for (GenericArtifact artifact : tenantArtifacts) {
                         if (StringUtils.equalsIgnoreCase(artifact.getAttribute(APIConstants.API_OVERVIEW_TYPE),
                                 APIConstants.APITransportType.WS.toString())) {
+                            int id = Integer.parseInt(APIMgtDAO.getInstance().getAPIID(
+                                    artifact.getAttribute(Constants.API_OVERVIEW_CONTEXT)));
+                            wsAPIs.add(id);
                             artifact.setAttribute(APIConstants.API_OVERVIEW_WS_URI_MAPPING,
                                     new Gson().toJson(wsUriMapping));
                             tenantArtifactManager.updateGenericArtifact(artifact);
@@ -489,6 +488,10 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                 }
                 PrivilegedCarbonContext.endTenantFlow();
             }
+            // Remove previous entries(In 3.x we are setting default REST methods with /*)
+            apiMgtDAO.removePreviousURLTemplatesForWSAPIs(wsAPIs);
+            //  add default url templates
+            apiMgtDAO.addDefaultURLTemplatesForWSAPIs(wsAPIs);
         } catch (RegistryException e) {
             log.error("Error while intitiation the registry", e);
         } catch (UserStoreException e) {
