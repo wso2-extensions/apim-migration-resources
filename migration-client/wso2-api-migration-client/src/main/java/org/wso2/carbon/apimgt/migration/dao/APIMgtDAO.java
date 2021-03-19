@@ -129,8 +129,7 @@ public class APIMgtDAO {
             "(UUID, NAME, TENANT_DOMAIN, DISPLAY_NAME, DESCRIPTION) VALUES (?,?,?,?,?)";
     private static String INSERT_VHOST = "INSERT INTO AM_GW_VHOST " +
             "(GATEWAY_ENV_ID, HOST, HTTP_CONTEXT, HTTP_PORT, HTTPS_PORT, WS_PORT, WSS_PORT) VALUES (?,?,?,?,?,?,?)";
-    // TODO: (renuka) Delete content from the table for now, should be dropped after removing table usage in the server
-    private static String DROP_AM_LABELS_TABLE = "DELETE FROM AM_LABELS";
+    private static String DROP_AM_LABELS_TABLE = "DROP TABLE AM_LABELS";
     private static String DROP_AM_LABEL_URLS_TABLE = "DROP TABLE AM_LABEL_URLS";
     public static String GET_CURRENT_API_PRODUCT_RESOURCES = "SELECT URL_MAPPING_ID, API_ID FROM AM_API_PRODUCT_MAPPING";
 
@@ -1013,10 +1012,10 @@ public class APIMgtDAO {
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             conn.setAutoCommit(false);
             try (
-//                    PreparedStatement ps1 = conn.prepareStatement(DROP_AM_LABEL_URLS_TABLE)
-                    PreparedStatement ps2 = conn.prepareStatement(DROP_AM_LABELS_TABLE);
+                    PreparedStatement ps1 = conn.prepareStatement(DROP_AM_LABEL_URLS_TABLE);
+                    PreparedStatement ps2 = conn.prepareStatement(DROP_AM_LABELS_TABLE)
             ) {
-//                ps1.executeUpdate();
+                ps1.executeUpdate();
                 ps2.executeUpdate();
                 conn.commit();
             } catch (SQLException ex) {
