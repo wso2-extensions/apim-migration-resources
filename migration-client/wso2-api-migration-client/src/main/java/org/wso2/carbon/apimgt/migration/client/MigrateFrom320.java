@@ -528,6 +528,7 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                 startTenantFlow(tenant.getDomain(), apiTenantId,
                         MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())));
                 this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceSystemRegistry(apiTenantId);
+                // Fault Handlers that needs to be removed from fault sequences
                 String unnecessaryFaultHandler1 = "org.wso2.carbon.apimgt.usage.publisher.APIMgtFaultHandler";
                 String unnecessaryFaultHandler2 = "org.wso2.carbon.apimgt.gateway.handlers.analytics.APIMgtFaultHandler";
                 org.wso2.carbon.registry.api.Collection seqCollection;
@@ -537,19 +538,24 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                 if (seqCollection != null) {
                     String[] childPaths = seqCollection.getChildren();
                     for (String childPath : childPaths) {
+                        // Retrieve fault sequence from registry
                         Resource sequence = registry.get(childPath);
                         DocumentBuilderFactory factory = APIUtil.getSecuredDocumentBuilder();
                         DocumentBuilder builder = factory.newDocumentBuilder();
                         String content = new String((byte[]) sequence.getContent(), Charset.defaultCharset());
                         Document doc = builder.parse(new InputSource(new StringReader(content)));
+                        // Retrieve elements with the tag name of "class" since the fault handlers that needs to
+                        // be removed are located within "class" tags
                         NodeList list = doc.getElementsByTagName("class");
                         for (int i = 0; i < list.getLength(); i++) {
                             Node node = (Node) list.item(i);
+                            // Retrieve the element with "name" attribute to identify the fault handlers to be removed
                             NamedNodeMap attr = node.getAttributes();
                             Node namedItem = null;
                             if (null != attr) {
                                 namedItem = attr.getNamedItem("name");
                             }
+                            // Remove the relevant fault handlers
                             if (unnecessaryFaultHandler1.equals(namedItem.getNodeValue()) || 
                                     unnecessaryFaultHandler2.equals(namedItem.getNodeValue())) {
                                 Node parentNode = node.getParentNode();
@@ -557,7 +563,9 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                                 parentNode.normalize();
                             }
                         }
+                        // Convert the content to String
                         String newContent = toString(doc);
+                        // Update the registry with the new content
                         sequence.setContent(newContent);
                         registry.put(childPath, sequence);
                     }
