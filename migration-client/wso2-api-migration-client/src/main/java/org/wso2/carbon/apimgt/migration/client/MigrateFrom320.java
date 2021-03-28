@@ -527,14 +527,16 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                 APIUtil.loadTenantRegistry(apiTenantId);
                 startTenantFlow(tenant.getDomain(), apiTenantId,
                         MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())));
-                this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceSystemRegistry(apiTenantId);
+                this.registry = ServiceReferenceHolder.getInstance().getRegistryService()
+                        .getGovernanceSystemRegistry(apiTenantId);
                 // Fault Handlers that needs to be removed from fault sequences
                 String unnecessaryFaultHandler1 = "org.wso2.carbon.apimgt.usage.publisher.APIMgtFaultHandler";
                 String unnecessaryFaultHandler2 = "org.wso2.carbon.apimgt.gateway.handlers.analytics.APIMgtFaultHandler";
                 org.wso2.carbon.registry.api.Collection seqCollection;
                 seqCollection = (org.wso2.carbon.registry.api.Collection) registry
-                        .get(org.wso2.carbon.apimgt.impl.APIConstants.API_CUSTOM_SEQUENCE_LOCATION + RegistryConstants.PATH_SEPARATOR +
-                                org.wso2.carbon.apimgt.impl.APIConstants.API_CUSTOM_SEQUENCE_TYPE_FAULT);
+                        .get(org.wso2.carbon.apimgt.impl.APIConstants.API_CUSTOM_SEQUENCE_LOCATION
+                                + RegistryConstants.PATH_SEPARATOR
+                                + org.wso2.carbon.apimgt.impl.APIConstants.API_CUSTOM_SEQUENCE_TYPE_FAULT);
                 if (seqCollection != null) {
                     String[] childPaths = seqCollection.getChildren();
                     for (String childPath : childPaths) {
@@ -556,8 +558,8 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                                 namedItem = attr.getNamedItem("name");
                             }
                             // Remove the relevant fault handlers
-                            if (unnecessaryFaultHandler1.equals(namedItem.getNodeValue()) || 
-                                    unnecessaryFaultHandler2.equals(namedItem.getNodeValue())) {
+                            if (unnecessaryFaultHandler1.equals(namedItem.getNodeValue()) || unnecessaryFaultHandler2
+                                    .equals(namedItem.getNodeValue())) {
                                 Node parentNode = node.getParentNode();
                                 parentNode.removeChild(node);
                                 parentNode.normalize();
