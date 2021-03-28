@@ -22,6 +22,10 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.LogFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.model.API;
 import org.wso2.carbon.apimgt.api.model.APIProduct;
@@ -69,6 +73,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringWriter;
+import java.nio.charset.Charset;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -83,6 +89,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import com.google.gson.Gson;
+import org.xml.sax.InputSource;
+
+import javax.xml.namespace.QName;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 public class MigrateFrom320 extends MigrationClientBase implements MigrationClient {
 
@@ -501,5 +516,73 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
         } catch (APIMigrationException e) {
             log.error("Error while migrating WebSocket APIs", e);
         }
+    }
+
+    public void removeUnnecessaryFaultHandlers() {
+        try {
+            List<Tenant> tenants = APIUtil.getAllTenantsWithSuperTenant();
+            for (Tenant tenant : tenants) {
+                int apiTenantId = tenantManager.getTenantId(tenant.getDomain());
+                APIUtil.loadTenantRegistry(apiTenantId);
+                startTenantFlow(tenant.getDomain(), apiTenantId,
+                        MultitenantUtils.getTenantAwareUsername(APIUtil.getTenantAdminUserName(tenant.getDomain())));
+                this.registry = ServiceReferenceHolder.getInstance().getRegistryService().getGovernanceSystemRegistry(apiTenantId);
+                String unnecessaryFaultHandler1 = "org.wso2.carbon.apimgt.usage.publisher.APIMgtFaultHandler";
+                String unnecessaryFaultHandler2 = "org.wso2.carbon.apimgt.gateway.handlers.analytics.APIMgtFaultHandler";
+                org.wso2.carbon.registry.api.Collection seqCollection;
+                seqCollection = (org.wso2.carbon.registry.api.Collection) registry
+                        .get(org.wso2.carbon.apimgt.impl.APIConstants.API_CUSTOM_SEQUENCE_LOCATION + RegistryConstants.PATH_SEPARATOR +
+                                org.wso2.carbon.apimgt.impl.APIConstants.API_CUSTOM_SEQUENCE_TYPE_FAULT);
+                if (seqCollection != null) {
+                    String[] childPaths = seqCollection.getChildren();
+                    for (String childPath : childPaths) {
+                        Resource sequence = registry.get(childPath);
+                        DocumentBuilderFactory factory = APIUtil.getSecuredDocumentBuilder();
+                        DocumentBuilder builder = factory.newDocumentBuilder();
+                        String content = new String((byte[]) sequence.getContent(), Charset.defaultCharset());
+                        Document doc = builder.parse(new InputSource(new StringReader(content)));
+                        NodeList list = doc.getElementsByTagName("class");
+                        for (int i = 0; i < list.getLength(); i++) {
+                            Node node = (Node) list.item(i);
+                            NamedNodeMap attr = node.getAttributes();
+                            Node namedItem = null;
+                            if (null != attr) {
+                                namedItem = attr.getNamedItem("name");
+                            }
+                            if (unnecessaryFaultHandler1.equals(namedItem.getNodeValue()) || 
+                                    unnecessaryFaultHandler2.equals(namedItem.getNodeValue())) {
+                                Node parentNode = node.getParentNode();
+                                parentNode.removeChild(node);
+                                parentNode.normalize();
+                            }
+                        }
+                        String newContent = toString(doc);
+                        sequence.setContent(newContent);
+                        registry.put(childPath, sequence);
+                    }
+                }
+                PrivilegedCarbonContext.endTenantFlow();
+            }
+        } catch (RegistryException e) {
+            log.error("Error while intitiation the registry", e);
+        } catch (UserStoreException e) {
+            log.error("Error while retrieving the tenants", e);
+        } catch (APIManagementException e) {
+            log.error("Error while Retrieving API artifact from the registry", e);
+        } catch (org.wso2.carbon.registry.api.RegistryException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static String toString(Document newDoc) throws Exception{
+        DOMSource domSource = new DOMSource(newDoc);
+        Transformer transformer = TransformerFactory.newInstance().newTransformer();
+        StringWriter sw = new StringWriter();
+        StreamResult sr = new StreamResult(sw);
+        transformer.transform(domSource, sr);
+        String output = sw.toString();
+        return output.substring(output.indexOf("?>") + 2);
     }
 }
