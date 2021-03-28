@@ -573,19 +573,19 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                 PrivilegedCarbonContext.endTenantFlow();
             }
         } catch (RegistryException e) {
-            log.error("Error while intitiation the registry", e);
+            log.error("Error while initiating the registry", e);
         } catch (UserStoreException e) {
             log.error("Error while retrieving the tenants", e);
         } catch (APIManagementException e) {
-            log.error("Error while Retrieving API artifact from the registry", e);
+            log.error("Error while retrieving tenant admin's username", e);
         } catch (org.wso2.carbon.registry.api.RegistryException e) {
-            e.printStackTrace();
+            log.error("Error while retrieving fault sequences", e);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error while removing unnecessary fault handlers from fault sequences", e);
         }
     }
 
-    private static String toString(Document newDoc) throws Exception{
+    private static String toString(Document newDoc) throws Exception {
         DOMSource domSource = new DOMSource(newDoc);
         Transformer transformer = TransformerFactory.newInstance().newTransformer();
         StringWriter sw = new StringWriter();
