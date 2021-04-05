@@ -156,6 +156,10 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 log.info("Successfully migrated API registry paths of Icon and WSDLs.");
 
+                log.info("Start removing unnecessary fault handlers from fault sequences ..........");
+                migrateFrom320.removeUnnecessaryFaultHandlers();
+                log.info("Successfully removed the unnecessary fault handlers from fault sequences.");
+
                 log.info("Start API Revision related migration ..........");
                 migrateFrom320.apiRevisionRelatedMigration();
                 log.info("API Revision related migration is successful.");
@@ -228,6 +232,10 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 log.info("Successfully migrated API registry paths of Icon and WSDLs.");
 
+                log.info("Start removing unnecessary fault handlers from fault sequences ..........");
+                migrateFrom320.removeUnnecessaryFaultHandlers();
+                log.info("Successfully removed the unnecessary fault handlers from fault sequences.");
+
                 log.info("Start API Revision related migration ..........");
                 migrateFrom320.apiRevisionRelatedMigration();
                 log.info("API Revision related migration is successful.");
@@ -277,6 +285,10 @@ public class APIMMigrationService implements ServerStartupObserver {
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 log.info("Successfully migrated API registry paths of Icon and WSDLs.");
 
+                log.info("Start removing unnecessary fault handlers from fault sequences ..........");
+                migrateFrom320.removeUnnecessaryFaultHandlers();
+                log.info("Successfully removed the unnecessary fault handlers from fault sequences.");
+
                 log.info("Start API Revision related migration ..........");
                 migrateFrom320.apiRevisionRelatedMigration();
                 log.info("Successfully done the API Revision related migration.");
@@ -307,6 +319,10 @@ public class APIMMigrationService implements ServerStartupObserver {
                 log.info("Start migrating registry paths of Icon and WSDLs  ..........");
                 migrateFrom320.updateRegistryPathsOfIconAndWSDL();
                 log.info("Successfully migrated API registry paths of Icon and WSDLs.");
+
+                log.info("Start removing unnecessary fault handlers from fault sequences ..........");
+                migrateFrom320.removeUnnecessaryFaultHandlers();
+                log.info("Successfully removed the unnecessary fault handlers from fault sequences.");
 
                 log.info("Start API Revision related migration ..........");
                 migrateFrom320.apiRevisionRelatedMigration();
