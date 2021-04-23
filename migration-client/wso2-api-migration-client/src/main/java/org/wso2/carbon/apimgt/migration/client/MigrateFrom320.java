@@ -36,6 +36,7 @@ import org.wso2.carbon.apimgt.api.model.Environment;
 import org.wso2.carbon.apimgt.api.model.VHost;
 import org.wso2.carbon.apimgt.impl.certificatemgt.ResponseCode;
 import org.wso2.carbon.apimgt.impl.dao.ApiMgtDAO;
+import org.wso2.carbon.apimgt.impl.definitions.AsyncApiParser;
 import org.wso2.carbon.apimgt.impl.internal.ServiceReferenceHolder;
 import org.wso2.carbon.apimgt.impl.APIManagerFactory;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
@@ -499,6 +500,20 @@ public class MigrateFrom320 extends MigrationClientBase implements MigrationClie
                             artifact.setAttribute(APIConstants.API_OVERVIEW_WS_URI_MAPPING,
                                     new Gson().toJson(wsUriMapping));
                             tenantArtifactManager.updateGenericArtifact(artifact);
+
+                            API api = APIUtil.getAPI(artifact);
+                            if (api != null) {
+
+                                AsyncApiParser asyncApiParser = new AsyncApiParser();
+                                String apiDefinition = asyncApiParser.generateAsyncAPIDefinition(api);
+                                APIProvider apiProviderTenant = APIManagerFactory.getInstance().getAPIProvider(
+                                        APIUtil.getTenantAdminUserName(tenant.getDomain()));
+                                apiProviderTenant.saveAsyncApiDefinition(api, apiDefinition);
+                            } else {
+                                log.error("Async Api definition is not added for the API " +
+                                        artifact.getAttribute(org.wso2.carbon.apimgt.impl.APIConstants.API_OVERVIEW_NAME)
+                                        + " due to returned API is null");
+                            }
                         }
                     }
                 }
