@@ -19,7 +19,14 @@ package org.wso2.carbon.apimgt.migration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
-import org.wso2.carbon.apimgt.migration.client.*;
+import org.wso2.carbon.apimgt.migration.client.MigrateFrom200;
+import org.wso2.carbon.apimgt.migration.client.MigrateFrom210;
+import org.wso2.carbon.apimgt.migration.client.MigrateFrom310;
+import org.wso2.carbon.apimgt.migration.client.MigrationClient;
+import org.wso2.carbon.apimgt.migration.client.MigrationClientFactory;
+import org.wso2.carbon.apimgt.migration.client.MigrationExecutor;
+import org.wso2.carbon.apimgt.migration.client.OauthAppAssignmentClient;
+import org.wso2.carbon.apimgt.migration.client.ScopeRoleMappingPopulationClient;
 import org.wso2.carbon.apimgt.migration.client.internal.ServiceHolder;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationClient;
 import org.wso2.carbon.apimgt.migration.client.sp_migration.APIMStatMigrationConstants;
@@ -81,13 +88,16 @@ public class APIMMigrationService implements ServerStartupObserver {
         boolean isScopeRoleMappingPopulation = Boolean.parseBoolean(System.getProperty(Constants.ARG_POPULATE_SCOPE_ROLE_MAPPING));
         boolean ignoreCrossTenantSubscriptions =
                 Boolean.parseBoolean(System.getProperty(Constants.ARG_IGNORE_CROSS_TENANT_SUBSCRIPTIONS));
+        boolean isSPAppAssignment = Boolean.parseBoolean(System.getProperty(Constants.ARG_ASSIGN_OAUTH_APPS_TO_OWNERS));
 
         try {
             RegistryServiceImpl registryService = new RegistryServiceImpl();
             TenantManager tenantManager = ServiceHolder.getRealmService().getTenantManager();
-//            MigrateUUIDToDB commonMigrationClient = new MigrateUUIDToDB(tenants, blackListTenants, tenantRange,
-//                    registryService, tenantManager);
-//            commonMigrationClient.moveUUIDToDBFromRegistry();
+            if (isSPAppAssignment) {
+                OauthAppAssignmentClient oauthAppAssignMentClient = new OauthAppAssignmentClient(tenants,
+                        blackListTenants, tenantRange, tenantManager);
+                oauthAppAssignMentClient.assignOauthAppToOwners();
+            }
             //Check SP-Migration enabled
             if (isSPMigration) {
                 log.info("----------------Migrating to WSO2 API Manager analytics 3.2.0");

@@ -22,32 +22,36 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
-import org.wso2.carbon.apimgt.migration.dto.ResourceScopeInfoDTO;
-import org.wso2.carbon.apimgt.migration.dto.ScopeInfoDTO;
-import org.wso2.carbon.apimgt.migration.dto.APIURLMappingInfoDTO;
+import org.wso2.carbon.apimgt.migration.dto.AMAPIResourceScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.dto.APIInfoDTO;
 import org.wso2.carbon.apimgt.migration.dto.APIInfoScopeMappingDTO;
 import org.wso2.carbon.apimgt.migration.dto.APIScopeMappingDTO;
-import org.wso2.carbon.apimgt.migration.dto.AMAPIResourceScopeMappingDTO;
+import org.wso2.carbon.apimgt.migration.dto.APIURLMappingInfoDTO;
+import org.wso2.carbon.apimgt.migration.dto.OauthAppInfoDto;
+import org.wso2.carbon.apimgt.migration.dto.ResourceScopeInfoDTO;
+import org.wso2.carbon.apimgt.migration.dto.ScopeInfoDTO;
 import org.wso2.carbon.apimgt.migration.util.Constants;
-
+import org.wso2.carbon.user.api.Tenant;
+import org.wso2.carbon.user.api.UserStoreException;
+import org.wso2.carbon.user.core.tenant.TenantManager;
+import org.wso2.carbon.user.core.util.UserCoreUtil;
+import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
+import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-
-import org.wso2.carbon.user.api.Tenant;
-import org.wso2.carbon.user.api.UserStoreException;
-import org.wso2.carbon.user.core.tenant.TenantManager;
-import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
-import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
+import java.util.Map;
 
 public class APIMgtDAO {
+
     private static final Log log = LogFactory.getLog(APIMgtDAO.class);
-    private static APIMgtDAO INSTANCE = null;
+    private static final String RETRIEVE_OAUTH_APP_INFO_BY_TENANT = "SELECT CONSUMER_KEY,USERNAME,TENANT_ID," +
+            "USER_DOMAIN,APP_NAME from IDN_OAUTH_CONSUMER_APPS WHERE TENANT_ID = ?";
     private static final String RESOURCE_PATH = "RESOURCE_PATH";
     private static final String SCOPE_NAME = "NAME";
     private static final String URL_MAPPING_ID = "URL_MAPPING_ID";
@@ -64,6 +68,7 @@ public class APIMgtDAO {
     private static final String SCOPE_DESCRIPTION = "DESCRIPTION";
     private static final String SCOPE_TYPE = "SCOPE_TYPE";
     private static final String TENANT_ID = "TENANT_ID";
+    private static APIMgtDAO INSTANCE = null;
     private static String GET_RESOURCE_SCOPE_SQL = "SELECT * FROM IDN_OAUTH2_RESOURCE_SCOPE";
     private static String GET_AM_API_SQL = "SELECT * FROM AM_API";
     private static String GET_AM_API_URL_MAPPING_SQL = "SELECT * FROM AM_API_URL_MAPPING";
@@ -108,9 +113,11 @@ public class APIMgtDAO {
                     "AM_SUBSCRIBER.SUBSCRIBER_ID = AM_APPLICATION.SUBSCRIBER_ID";
 
     private APIMgtDAO() {
+
     }
 
     public static APIMgtDAO getInstance() {
+
         if (INSTANCE == null) {
             INSTANCE = new APIMgtDAO();
         }
@@ -118,125 +125,17 @@ public class APIMgtDAO {
     }
 
     /**
-     * This mehthod is used to get data from IDN_OAUTH2_RESOURCE_SCOPE by tenant id
-     * @return
-     * @throws APIMigrationException
-     */
-    public ArrayList<ResourceScopeInfoDTO> getResourceScopeData() throws APIMigrationException {
-        try (Connection conn = APIMgtDBUtil.getConnection()) {
-            try (PreparedStatement ps = conn.prepareStatement(GET_RESOURCE_SCOPE_SQL)) {
-                try (ResultSet resultSet = ps.executeQuery()) {
-                    ArrayList<ResourceScopeInfoDTO> scopeInfoList = new ArrayList<>();
-                    while (resultSet.next()) {
-                        ResourceScopeInfoDTO scopeInfo = new ResourceScopeInfoDTO();
-                        scopeInfo.setResourcePath(resultSet.getString(RESOURCE_PATH));
-                        scopeInfo.setScopeId(resultSet.getString(SCOPE_ID));
-                        scopeInfo.setTenantID(resultSet.getString(TENANT_ID));
-                        scopeInfoList.add(scopeInfo);
-                    }
-                    return scopeInfoList;
-                }
-            }
-        } catch (SQLException ex) {
-            throw new APIMigrationException("Failed to get data from IDN_OAUTH2_RESOURCE_SCOPE", ex);
-        }
-    }
-
-    /**
-     * This mehthod is used to get data from AM_API table
-     * @return
-     * @throws APIMigrationException
-     */
-    public ArrayList<APIInfoDTO> getAPIData() throws APIMigrationException {
-        try (Connection conn = APIMgtDBUtil.getConnection()) {
-            try (PreparedStatement ps = conn.prepareStatement(GET_AM_API_SQL)) {
-                try (ResultSet resultSet = ps.executeQuery()) {
-                    ArrayList<APIInfoDTO> apiInfoList = new ArrayList<>();
-                    while (resultSet.next()) {
-                        APIInfoDTO apiInfoDTO = new APIInfoDTO();
-                        apiInfoDTO.setApiId(resultSet.getInt(API_ID));
-                        apiInfoDTO.setApiName(resultSet.getString(API_NAME));
-                        apiInfoDTO.setApiProvider(resultSet.getString(API_PROVIDER));
-                        apiInfoDTO.setApiVersion(resultSet.getString(API_VERSION));
-                        apiInfoDTO.setApiContext(resultSet.getString(CONTEXT));
-                        apiInfoDTO.setGetApiContextTemplate(resultSet.getString(CONTEXT_TEMPLATE));
-                        apiInfoList.add(apiInfoDTO);
-                    }
-                    return apiInfoList;
-                }
-            }
-        } catch (SQLException ex) {
-            throw new APIMigrationException("Failed to get data from AM_API table", ex);
-        }
-    }
-
-    /**
-     * This method is used to get data from AM_API_URL_MAPPING table
-     * @return
-     * @throws APIMigrationException
-     */
-    public ArrayList<APIURLMappingInfoDTO> getAPIURLMappingData() throws APIMigrationException {
-        try (Connection conn = APIMgtDBUtil.getConnection()) {
-            try (PreparedStatement ps = conn.prepareStatement(GET_AM_API_URL_MAPPING_SQL)) {
-                try (ResultSet resultSet = ps.executeQuery()) {
-                    ArrayList<APIURLMappingInfoDTO> apiurlMappingInfoDTOArrayList = new ArrayList<>();
-                    while (resultSet.next()) {
-                        APIURLMappingInfoDTO apiurlMappingInfoDTO = new APIURLMappingInfoDTO();
-                        apiurlMappingInfoDTO.setUrlMappingId(resultSet.getInt(URL_MAPPING_ID));
-                        apiurlMappingInfoDTO.setApiId(resultSet.getInt(API_ID));
-                        apiurlMappingInfoDTO.setHttpMethod(resultSet.getString(HTTP_METHOD));
-                        apiurlMappingInfoDTO.setUrlPattern(resultSet.getString(URL_PATTERN));
-                        apiurlMappingInfoDTOArrayList.add(apiurlMappingInfoDTO);
-                    }
-                    return apiurlMappingInfoDTOArrayList;
-                }
-            }
-        } catch (SQLException ex) {
-            throw new APIMigrationException("Failed to get data from AM_API_URL_MAPPING table", ex);
-        }
-    }
-
-    /**
-     * This method is used to get data from AM_API_SCOPE, IDN_OAUTH2_SCOPE by tenant id
-     * @return
-     * @throws APIMigrationException
-     */
-    public ArrayList<APIInfoScopeMappingDTO> getAPIInfoScopeData() throws APIMigrationException {
-        try (Connection conn = APIMgtDBUtil.getConnection()) {
-            try (PreparedStatement ps = conn.prepareStatement(GET_API_INFO_SCOPE_SQL)) {
-                try (ResultSet resultSet = ps.executeQuery()) {
-                    ArrayList<APIInfoScopeMappingDTO> scopeAPIInfoList = new ArrayList<>();
-                    while (resultSet.next()) {
-                        APIInfoScopeMappingDTO apiInfoScopeMappingDTO = new APIInfoScopeMappingDTO();
-                        apiInfoScopeMappingDTO.setScopeId(resultSet.getInt(SCOPE_ID));
-                        apiInfoScopeMappingDTO.setApiId(resultSet.getInt(API_ID));
-                        apiInfoScopeMappingDTO.setScopeName(resultSet.getString(SCOPE_NAME));
-                        apiInfoScopeMappingDTO.setApiName(resultSet.getString(API_NAME));
-                        apiInfoScopeMappingDTO.setApiProvider(resultSet.getString(API_PROVIDER));
-                        apiInfoScopeMappingDTO.setApiVersion(resultSet.getString(API_VERSION));
-                        apiInfoScopeMappingDTO.setResourcePath(resultSet.getString(RESOURCE_PATH));
-                        scopeAPIInfoList.add(apiInfoScopeMappingDTO);
-                    }
-                    return scopeAPIInfoList;
-                }
-            }
-        } catch (SQLException ex) {
-            throw new APIMigrationException("Failed to get data from AM_API_SCOPE, IDN_OAUTH2_SCOPE tables", ex);
-        }
-    }
-
-    /**
      * Alter the scope id in the resource scope
      *
-     * @param scopeId Scope ID
+     * @param scopeId      Scope ID
      * @param resourcePath Resource Path
-     * @param newScopeId Scope ID
+     * @param newScopeId   Scope ID
      */
     public static void updateScopeResource(int newScopeId, String resourcePath, int scopeId) throws APIMigrationException {
 
         try (Connection connection = APIMgtDBUtil.getConnection()) {
             connection.setAutoCommit(false);
-            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_SCOPE_ID_IN_RESOURCE)){
+            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_SCOPE_ID_IN_RESOURCE)) {
                 preparedStatement.setInt(1, newScopeId);
                 preparedStatement.setInt(2, scopeId);
                 preparedStatement.executeUpdate();
@@ -247,157 +146,6 @@ public class APIMgtDAO {
             }
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_SCOPE_ID_IN_RESOURCE), e);
-        }
-    }
-
-
-    /**
-     * This mehthod is used to get data from AM_API_SCOPE
-     * @return
-     * @throws APIMigrationException
-     */
-    public ArrayList<APIScopeMappingDTO> getAMScopeData() throws APIMigrationException {
-        try (Connection conn = APIMgtDBUtil.getConnection()) {
-            try (PreparedStatement ps = conn.prepareStatement(GET_AM_API_SCOPE_SQL)) {
-                try (ResultSet resultSet = ps.executeQuery()) {
-                    ArrayList<APIScopeMappingDTO> scopeInfoList = new ArrayList<>();
-                    while (resultSet.next()) {
-                        APIScopeMappingDTO apiScopeMappingDTO = new APIScopeMappingDTO();
-                        apiScopeMappingDTO.setApiId(resultSet.getInt(API_ID));
-                        apiScopeMappingDTO.setScopeId(resultSet.getInt(SCOPE_ID));
-                        scopeInfoList.add(apiScopeMappingDTO);
-                    }
-                    return scopeInfoList;
-                }
-            }
-        } catch (SQLException ex) {
-            throw new APIMigrationException("Failed to get data from AM_API_SCOPE", ex);
-        }
-    }
-
-    /**
-     * This method is used to get API Id using API context
-     * @param context
-     * @return
-     * @throws APIMigrationException
-     */
-    public String getAPIID(String context) throws APIMigrationException {
-        String apiId = null;
-        try (Connection conn = APIMgtDBUtil.getConnection()) {
-            try (PreparedStatement ps = conn.prepareStatement(GET_API_ID)) {
-                ps.setString(1, context);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        apiId = rs.getString("API_ID");
-                    }
-                }
-            }
-        } catch (SQLException ex) {
-            throw new APIMigrationException("Failed to get API ID using context : " + context, ex);
-        }
-        return apiId;
-    }
-
-    /**
-     * This method is used to retrieve the scope id given the resource path
-     * @param resourcePath
-     * @throws APIMigrationException
-     */
-    public int getScopeId(String resourcePath)
-            throws APIMigrationException {
-        int scopeId = -1;
-        try (Connection conn = APIMgtDBUtil.getConnection()) {
-            try (PreparedStatement ps = conn.prepareStatement(GET_SCOPE_ID)) {
-                ps.setString(1, resourcePath);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        scopeId = rs.getInt(SCOPE_ID);
-                    }
-                }
-            }
-        } catch (SQLException ex) {
-            throw new APIMigrationException("Failed to get SCOPE ID using resource path : " + resourcePath, ex);
-        }
-        return scopeId;
-    }
-
-    /**
-     * This method is used to retrieve the scope details given the scopeId
-     * @param scopeId
-     * @throws APIMigrationException
-     */
-    public ScopeInfoDTO getScopeInfoByScopeId(int scopeId)
-            throws APIMigrationException {
-        ScopeInfoDTO scopeInfoDTO = new ScopeInfoDTO();
-        try (Connection conn = APIMgtDBUtil.getConnection()) {
-            try (PreparedStatement ps = conn.prepareStatement(GET_SCOPE_BY_ID_SQL)) {
-                ps.setInt(1, scopeId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        scopeInfoDTO.setScopeId(rs.getInt(SCOPE_ID));
-                        scopeInfoDTO.setScopeName(rs.getString(SCOPE_NAME));
-                        scopeInfoDTO.setScopeDisplayName(rs.getString(SCOPE_DISPLAY_NAME));
-                        scopeInfoDTO.setScopeDescription(rs.getString(SCOPE_DESCRIPTION));
-                        scopeInfoDTO.setTenantID(rs.getInt(TENANT_ID));
-                    }
-                }
-            }
-        } catch (SQLException ex) {
-            throw new APIMigrationException("Failed to retrieve the scope details given the scopeId : " + scopeId, ex);
-        }
-        return scopeInfoDTO;
-    }
-
-    /**
-     * This method is used to insert data to AM_API_RESOURCE_SCOPE_MAPPING table
-     * @param resourceScopeMappingDTOS
-     * @throws APIMigrationException
-     */
-    public void addDataToResourceScopeMapping(List<AMAPIResourceScopeMappingDTO> resourceScopeMappingDTOS)
-            throws APIMigrationException {
-        try (Connection conn = APIMgtDBUtil.getConnection()) {
-            conn.setAutoCommit(false);
-            try (PreparedStatement psAddResourceScope =
-                         conn.prepareStatement(INSERT_INTO_AM_API_RESOURCE_SCOPE_MAPPING)) {
-                for (AMAPIResourceScopeMappingDTO resourceScopeMappingDTO : resourceScopeMappingDTOS) {
-                    psAddResourceScope.setString(1, resourceScopeMappingDTO.getScopeName());
-                    psAddResourceScope.setInt(2, resourceScopeMappingDTO.getUrlMappingId());
-                    psAddResourceScope.setInt(3, resourceScopeMappingDTO.getTenantId());
-                    psAddResourceScope.addBatch();
-                }
-                psAddResourceScope.executeBatch();
-                conn.commit();
-            } catch (SQLException ex) {
-                conn.rollback();
-                throw new APIMigrationException("Failed to add data to AM_API_RESOURCE_SCOPE_MAPPING table : ", ex);
-            }
-        } catch (SQLException ex) {
-            throw new APIMigrationException("Failed to add data to AM_API_RESOURCE_SCOPE_MAPPING table : ", ex);
-        }
-    }
-
-    /**
-     * This method is used to remove the duplicate data from IDN_OAUTH2_SCOPE, AM_API_SCOPE
-     * and IDN_OAUTH2_SCOPE_BINDING tables
-     * @param duplicateList
-     * @throws APIMigrationException
-     */
-    public void removeDuplicateScopeEntries(ArrayList<APIScopeMappingDTO> duplicateList)
-            throws APIMigrationException {
-        try (Connection conn = APIMgtDBUtil.getConnection()) {
-            for (APIScopeMappingDTO apiScopeMappingDTOS : duplicateList) {
-                try (PreparedStatement preparedStatement = conn.prepareStatement(DELETE_SCOPE_FROM_AM_API_SCOPES)) {
-                    preparedStatement.setInt(1, apiScopeMappingDTOS.getApiId());
-                    preparedStatement.setInt(2, apiScopeMappingDTOS.getScopeId());
-                    preparedStatement.executeUpdate();
-                }
-                try (PreparedStatement preparedStatement = conn.prepareStatement(DELETE_SCOPE_FROM_IDN_OAUTH2_SCOPES)) {
-                    preparedStatement.setInt(1, apiScopeMappingDTOS.getScopeId());
-                    preparedStatement.executeUpdate();
-                }
-            }
-        } catch (SQLException ex) {
-            throw new APIMigrationException("Failed to delete duplicate scope data : ", ex);
         }
     }
 
@@ -412,7 +160,7 @@ public class APIMgtDAO {
         ArrayList<String> consumerKeys = new ArrayList<String>();
         try (Connection connection = APIMgtDBUtil.getConnection()) {
             connection.setAutoCommit(false);
-            try (PreparedStatement preparedStatement = connection.prepareStatement(GET_APPS_OF_TYPE_JWT)){
+            try (PreparedStatement preparedStatement = connection.prepareStatement(GET_APPS_OF_TYPE_JWT)) {
                 preparedStatement.setInt(1, tenantId);
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
                     connection.commit();
@@ -437,7 +185,7 @@ public class APIMgtDAO {
 
         try (Connection connection = APIMgtDBUtil.getConnection()) {
             connection.setAutoCommit(false);
-            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_TOKEN_TYPE_TO_JWT)){
+            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_TOKEN_TYPE_TO_JWT)) {
                 preparedStatement.setString(1, "JWT");
                 preparedStatement.setString(2, consumerKey);
                 preparedStatement.executeUpdate();
@@ -452,18 +200,298 @@ public class APIMgtDAO {
     }
 
     /**
+     * This mehthod is used to get data from IDN_OAUTH2_RESOURCE_SCOPE by tenant id
+     *
+     * @return
+     * @throws APIMigrationException
+     */
+    public ArrayList<ResourceScopeInfoDTO> getResourceScopeData() throws APIMigrationException {
+
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(GET_RESOURCE_SCOPE_SQL)) {
+                try (ResultSet resultSet = ps.executeQuery()) {
+                    ArrayList<ResourceScopeInfoDTO> scopeInfoList = new ArrayList<>();
+                    while (resultSet.next()) {
+                        ResourceScopeInfoDTO scopeInfo = new ResourceScopeInfoDTO();
+                        scopeInfo.setResourcePath(resultSet.getString(RESOURCE_PATH));
+                        scopeInfo.setScopeId(resultSet.getString(SCOPE_ID));
+                        scopeInfo.setTenantID(resultSet.getString(TENANT_ID));
+                        scopeInfoList.add(scopeInfo);
+                    }
+                    return scopeInfoList;
+                }
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to get data from IDN_OAUTH2_RESOURCE_SCOPE", ex);
+        }
+    }
+
+    /**
+     * This mehthod is used to get data from AM_API table
+     *
+     * @return
+     * @throws APIMigrationException
+     */
+    public ArrayList<APIInfoDTO> getAPIData() throws APIMigrationException {
+
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(GET_AM_API_SQL)) {
+                try (ResultSet resultSet = ps.executeQuery()) {
+                    ArrayList<APIInfoDTO> apiInfoList = new ArrayList<>();
+                    while (resultSet.next()) {
+                        APIInfoDTO apiInfoDTO = new APIInfoDTO();
+                        apiInfoDTO.setApiId(resultSet.getInt(API_ID));
+                        apiInfoDTO.setApiName(resultSet.getString(API_NAME));
+                        apiInfoDTO.setApiProvider(resultSet.getString(API_PROVIDER));
+                        apiInfoDTO.setApiVersion(resultSet.getString(API_VERSION));
+                        apiInfoDTO.setApiContext(resultSet.getString(CONTEXT));
+                        apiInfoDTO.setGetApiContextTemplate(resultSet.getString(CONTEXT_TEMPLATE));
+                        apiInfoList.add(apiInfoDTO);
+                    }
+                    return apiInfoList;
+                }
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to get data from AM_API table", ex);
+        }
+    }
+
+    /**
+     * This method is used to get data from AM_API_URL_MAPPING table
+     *
+     * @return
+     * @throws APIMigrationException
+     */
+    public ArrayList<APIURLMappingInfoDTO> getAPIURLMappingData() throws APIMigrationException {
+
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(GET_AM_API_URL_MAPPING_SQL)) {
+                try (ResultSet resultSet = ps.executeQuery()) {
+                    ArrayList<APIURLMappingInfoDTO> apiurlMappingInfoDTOArrayList = new ArrayList<>();
+                    while (resultSet.next()) {
+                        APIURLMappingInfoDTO apiurlMappingInfoDTO = new APIURLMappingInfoDTO();
+                        apiurlMappingInfoDTO.setUrlMappingId(resultSet.getInt(URL_MAPPING_ID));
+                        apiurlMappingInfoDTO.setApiId(resultSet.getInt(API_ID));
+                        apiurlMappingInfoDTO.setHttpMethod(resultSet.getString(HTTP_METHOD));
+                        apiurlMappingInfoDTO.setUrlPattern(resultSet.getString(URL_PATTERN));
+                        apiurlMappingInfoDTOArrayList.add(apiurlMappingInfoDTO);
+                    }
+                    return apiurlMappingInfoDTOArrayList;
+                }
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to get data from AM_API_URL_MAPPING table", ex);
+        }
+    }
+
+    /**
+     * This method is used to get data from AM_API_SCOPE, IDN_OAUTH2_SCOPE by tenant id
+     *
+     * @return
+     * @throws APIMigrationException
+     */
+    public ArrayList<APIInfoScopeMappingDTO> getAPIInfoScopeData() throws APIMigrationException {
+
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(GET_API_INFO_SCOPE_SQL)) {
+                try (ResultSet resultSet = ps.executeQuery()) {
+                    ArrayList<APIInfoScopeMappingDTO> scopeAPIInfoList = new ArrayList<>();
+                    while (resultSet.next()) {
+                        APIInfoScopeMappingDTO apiInfoScopeMappingDTO = new APIInfoScopeMappingDTO();
+                        apiInfoScopeMappingDTO.setScopeId(resultSet.getInt(SCOPE_ID));
+                        apiInfoScopeMappingDTO.setApiId(resultSet.getInt(API_ID));
+                        apiInfoScopeMappingDTO.setScopeName(resultSet.getString(SCOPE_NAME));
+                        apiInfoScopeMappingDTO.setApiName(resultSet.getString(API_NAME));
+                        apiInfoScopeMappingDTO.setApiProvider(resultSet.getString(API_PROVIDER));
+                        apiInfoScopeMappingDTO.setApiVersion(resultSet.getString(API_VERSION));
+                        apiInfoScopeMappingDTO.setResourcePath(resultSet.getString(RESOURCE_PATH));
+                        scopeAPIInfoList.add(apiInfoScopeMappingDTO);
+                    }
+                    return scopeAPIInfoList;
+                }
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to get data from AM_API_SCOPE, IDN_OAUTH2_SCOPE tables", ex);
+        }
+    }
+
+    /**
+     * This mehthod is used to get data from AM_API_SCOPE
+     *
+     * @return
+     * @throws APIMigrationException
+     */
+    public ArrayList<APIScopeMappingDTO> getAMScopeData() throws APIMigrationException {
+
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(GET_AM_API_SCOPE_SQL)) {
+                try (ResultSet resultSet = ps.executeQuery()) {
+                    ArrayList<APIScopeMappingDTO> scopeInfoList = new ArrayList<>();
+                    while (resultSet.next()) {
+                        APIScopeMappingDTO apiScopeMappingDTO = new APIScopeMappingDTO();
+                        apiScopeMappingDTO.setApiId(resultSet.getInt(API_ID));
+                        apiScopeMappingDTO.setScopeId(resultSet.getInt(SCOPE_ID));
+                        scopeInfoList.add(apiScopeMappingDTO);
+                    }
+                    return scopeInfoList;
+                }
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to get data from AM_API_SCOPE", ex);
+        }
+    }
+
+    /**
+     * This method is used to get API Id using API context
+     *
+     * @param context
+     * @return
+     * @throws APIMigrationException
+     */
+    public String getAPIID(String context) throws APIMigrationException {
+
+        String apiId = null;
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(GET_API_ID)) {
+                ps.setString(1, context);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        apiId = rs.getString("API_ID");
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to get API ID using context : " + context, ex);
+        }
+        return apiId;
+    }
+
+    /**
+     * This method is used to retrieve the scope id given the resource path
+     *
+     * @param resourcePath
+     * @throws APIMigrationException
+     */
+    public int getScopeId(String resourcePath)
+            throws APIMigrationException {
+
+        int scopeId = -1;
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(GET_SCOPE_ID)) {
+                ps.setString(1, resourcePath);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        scopeId = rs.getInt(SCOPE_ID);
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to get SCOPE ID using resource path : " + resourcePath, ex);
+        }
+        return scopeId;
+    }
+
+    /**
+     * This method is used to retrieve the scope details given the scopeId
+     *
+     * @param scopeId
+     * @throws APIMigrationException
+     */
+    public ScopeInfoDTO getScopeInfoByScopeId(int scopeId)
+            throws APIMigrationException {
+
+        ScopeInfoDTO scopeInfoDTO = new ScopeInfoDTO();
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(GET_SCOPE_BY_ID_SQL)) {
+                ps.setInt(1, scopeId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        scopeInfoDTO.setScopeId(rs.getInt(SCOPE_ID));
+                        scopeInfoDTO.setScopeName(rs.getString(SCOPE_NAME));
+                        scopeInfoDTO.setScopeDisplayName(rs.getString(SCOPE_DISPLAY_NAME));
+                        scopeInfoDTO.setScopeDescription(rs.getString(SCOPE_DESCRIPTION));
+                        scopeInfoDTO.setTenantID(rs.getInt(TENANT_ID));
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to retrieve the scope details given the scopeId : " + scopeId, ex);
+        }
+        return scopeInfoDTO;
+    }
+
+    /**
+     * This method is used to insert data to AM_API_RESOURCE_SCOPE_MAPPING table
+     *
+     * @param resourceScopeMappingDTOS
+     * @throws APIMigrationException
+     */
+    public void addDataToResourceScopeMapping(List<AMAPIResourceScopeMappingDTO> resourceScopeMappingDTOS)
+            throws APIMigrationException {
+
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement psAddResourceScope =
+                         conn.prepareStatement(INSERT_INTO_AM_API_RESOURCE_SCOPE_MAPPING)) {
+                for (AMAPIResourceScopeMappingDTO resourceScopeMappingDTO : resourceScopeMappingDTOS) {
+                    psAddResourceScope.setString(1, resourceScopeMappingDTO.getScopeName());
+                    psAddResourceScope.setInt(2, resourceScopeMappingDTO.getUrlMappingId());
+                    psAddResourceScope.setInt(3, resourceScopeMappingDTO.getTenantId());
+                    psAddResourceScope.addBatch();
+                }
+                psAddResourceScope.executeBatch();
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw new APIMigrationException("Failed to add data to AM_API_RESOURCE_SCOPE_MAPPING table : ", ex);
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to add data to AM_API_RESOURCE_SCOPE_MAPPING table : ", ex);
+        }
+    }
+
+    /**
+     * This method is used to remove the duplicate data from IDN_OAUTH2_SCOPE, AM_API_SCOPE
+     * and IDN_OAUTH2_SCOPE_BINDING tables
+     *
+     * @param duplicateList
+     * @throws APIMigrationException
+     */
+    public void removeDuplicateScopeEntries(ArrayList<APIScopeMappingDTO> duplicateList)
+            throws APIMigrationException {
+
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            for (APIScopeMappingDTO apiScopeMappingDTOS : duplicateList) {
+                try (PreparedStatement preparedStatement = conn.prepareStatement(DELETE_SCOPE_FROM_AM_API_SCOPES)) {
+                    preparedStatement.setInt(1, apiScopeMappingDTOS.getApiId());
+                    preparedStatement.setInt(2, apiScopeMappingDTOS.getScopeId());
+                    preparedStatement.executeUpdate();
+                }
+                try (PreparedStatement preparedStatement = conn.prepareStatement(DELETE_SCOPE_FROM_IDN_OAUTH2_SCOPES)) {
+                    preparedStatement.setInt(1, apiScopeMappingDTOS.getScopeId());
+                    preparedStatement.executeUpdate();
+                }
+            }
+        } catch (SQLException ex) {
+            throw new APIMigrationException("Failed to delete duplicate scope data : ", ex);
+        }
+    }
+
+    /**
      * This method is used to insert data to add default URL Mappings of WS APIs
+     *
      * @param apiId
      * @throws APIMigrationException
      */
     public void addURLTemplatesForWSAPIs(int apiId) throws APIMigrationException {
+
         if (apiId == -1) {
             return;
         }
         try (Connection conn = APIMgtDBUtil.getConnection()) {
             conn.setAutoCommit(false);
             try (PreparedStatement ps = conn.prepareStatement(INSERT_URL_MAPPINGS_FOR_WS_APIS)) {
-                for (String httpVerb: Constants.HTTP_DEFAULT_METHODS) {
+                for (String httpVerb : Constants.HTTP_DEFAULT_METHODS) {
                     ps.setInt(1, apiId);
                     ps.setString(2, httpVerb);
                     ps.setString(3, Constants.AUTH_APPLICATION_OR_USER_LEVEL_TOKEN);
@@ -490,6 +518,7 @@ public class APIMgtDAO {
      * @throws APIMigrationException
      */
     public boolean isCrossTenantAPISubscriptionsExist(TenantManager tenantManager) throws APIMigrationException {
+
         try (Connection connection = APIMgtDBUtil.getConnection()) {
             connection.setAutoCommit(false);
             try (PreparedStatement preparedStatement = connection.prepareStatement(CROSS_TENANT_API_SUBSCRIPTIONS)) {
@@ -533,8 +562,8 @@ public class APIMgtDAO {
 
         try (Connection connection = APIMgtDBUtil.getConnection()) {
             connection.setAutoCommit(false);
-            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_UUID_BY_THE_IDENTIFIER)){
-                for(APIInfoDTO apiInfoDTO : apiInfoDTOS){
+            try (PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_UUID_BY_THE_IDENTIFIER)) {
+                for (APIInfoDTO apiInfoDTO : apiInfoDTOS) {
                     preparedStatement.setString(1, apiInfoDTO.getUuid());
                     preparedStatement.setString(2, apiInfoDTO.getApiProvider());
                     preparedStatement.setString(3, apiInfoDTO.getApiName());
@@ -551,5 +580,37 @@ public class APIMgtDAO {
         } catch (SQLException e) {
             throw new APIMigrationException("SQLException when executing: ".concat(UPDATE_UUID_BY_THE_IDENTIFIER), e);
         }
+    }
+
+    public Map<String, List<OauthAppInfoDto>> retrieveOAuthAppInfoDtoForTenants(Tenant tenant) throws APIMigrationException {
+
+        Map<String,List<OauthAppInfoDto>> oauthAppInfoDtoSet = new HashMap<>();
+        try (Connection connection = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(RETRIEVE_OAUTH_APP_INFO_BY_TENANT)) {
+                preparedStatement.setInt(1, tenant.getId());
+                try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                    while (resultSet.next()) {
+                        OauthAppInfoDto oauthAppInfoDto = new OauthAppInfoDto();
+                        oauthAppInfoDto.setConsumerKey(resultSet.getString("CONSUMER_KEY"));
+                        oauthAppInfoDto.setOauthAppName(resultSet.getString("APP_NAME"));
+                        oauthAppInfoDto.setTenantId(resultSet.getInt("TENANT_ID"));
+                        oauthAppInfoDto.setOwner(resultSet.getString("USERNAME"));
+                        oauthAppInfoDto.setUserDomain(resultSet.getString("USER_DOMAIN"));
+                        String qualifiedUserName = UserCoreUtil.addDomainToName(oauthAppInfoDto.getOwner(),
+                                oauthAppInfoDto.getUserDomain());
+                        List<OauthAppInfoDto> oauthAppInfoDtos = oauthAppInfoDtoSet.get(qualifiedUserName);
+                        if (oauthAppInfoDtos == null){
+                            oauthAppInfoDtos = new ArrayList<>();
+                            oauthAppInfoDtoSet.put(qualifiedUserName,oauthAppInfoDtos);
+                        }
+                        oauthAppInfoDtos.add(oauthAppInfoDto);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("SQLException when executing: ".concat(RETRIEVE_OAUTH_APP_INFO_BY_TENANT)
+                    , e);
+        }
+        return oauthAppInfoDtoSet;
     }
 }
