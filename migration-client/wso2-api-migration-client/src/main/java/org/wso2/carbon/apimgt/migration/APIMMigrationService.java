@@ -45,6 +45,7 @@ public class APIMMigrationService implements ServerStartupObserver {
     private final String V310 = "3.1.0";
     private final String V300 = "3.0.0";
     private final String V320 = "3.2.0";
+    private final String V400 = "4.0.0";
 
     @Override
     public void completingServerStartup() {
@@ -338,6 +339,12 @@ public class APIMMigrationService implements ServerStartupObserver {
 
                 log.info("Migrated Successfully to 4.0.0");
 
+            } else if (V400.equals(migrateFromVersion)) {
+                MigrateFrom400 migrateFrom400 = new MigrateFrom400(tenants, blackListTenants,
+                        tenantRange, registryService, tenantManager);
+                log.info("Start migrating databases  ..........");
+                migrateFrom400.databaseMigration();
+                log.info("Successfully migrated databases.");
             } else {
                 MigrationClientFactory.initFactory(tenants, blackListTenants, tenantRange, registryService, tenantManager,
                         removeDecryptionFailedKeysFromDB);
