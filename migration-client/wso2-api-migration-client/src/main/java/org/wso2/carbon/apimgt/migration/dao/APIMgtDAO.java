@@ -21,14 +21,12 @@ package org.wso2.carbon.apimgt.migration.dao;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.model.VHost;
-import org.wso2.carbon.apimgt.impl.dao.constants.SQLConstants;
 import org.wso2.carbon.apimgt.impl.utils.APIMgtDBUtil;
 import org.wso2.carbon.apimgt.api.model.URITemplate;
 import org.wso2.carbon.apimgt.api.model.Scope;
+import org.wso2.carbon.apimgt.impl.utils.APIUtil;
 import org.wso2.carbon.apimgt.migration.APIMigrationException;
 import org.wso2.carbon.apimgt.migration.dto.GatewayEnvironmentDTO;
 import org.wso2.carbon.apimgt.migration.dto.LabelDTO;
@@ -50,18 +48,16 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.wso2.carbon.user.api.Tenant;
 import org.wso2.carbon.utils.DBUtils;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
+import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 public class APIMgtDAO {
 
@@ -192,6 +188,28 @@ public class APIMgtDAO {
                     "AM_APPLICATION_REGISTRATION.REG_ID = ?";
 
     private static String GET_API_ID_OF_WS_APIS = "SELECT API_ID FROM AM_API WHERE API_TYPE = 'WS'";
+
+    private static String UPDATE_API_CATEGORY_ORGANIZATION =
+            "UPDATE AM_API_CATEGORIES " +
+                    "SET AM_API_CATEGORIES.ORGANIZATION = ? " +
+                    "WHERE AM_API_CATEGORIES.TENANT_ID = ?";
+
+    private static String GET_DISTINCT_API_PROVIDERS = "SELECT DISTINCT API_PROVIDER FROM AM_API";
+
+    private static String UPDATE_API_ORGANIZATION =
+            "UPDATE AM_API " +
+                    "SET ORGANIZATION = ? " +
+                    "WHERE API_PROVIDER = ?";
+
+    private static String GET_DISTINCT_SUBSCRIBER_ID_TENANT_ID =
+            "SELECT DISTINCT AM_SUBSCRIBER.SUBSCRIBER_ID, AM_SUBSCRIBER.TENANT_ID " +
+                    "FROM AM_APPLICATION INNER JOIN AM_SUBSCRIBER " +
+                    "ON AM_APPLICATION.SUBSCRIBER_ID = AM_SUBSCRIBER.SUBSCRIBER_ID";
+
+    private static String UPDATE_APPLICATION_ORGANIZATION =
+            "UPDATE AM_APPLICATION " +
+                    "SET AM_APPLICATION.ORGANIZATION = ? " +
+                    "WHERE AM_APPLICATION.SUBSCRIBER_ID = ?";
 
     private APIMgtDAO() {
 
@@ -1096,6 +1114,120 @@ public class APIMgtDAO {
             }
         } catch (SQLException e) {
             throw new APIMigrationException("Error while removing URL template(s) from the database " + e);
+        }
+    }
+
+    /**
+     * Sets organizations in the AM_API_CATEGORIES table
+     *
+     * @param tenantIdsAndOrganizations Tenant ID and organization mappings
+     * @throws APIMigrationException
+     */
+    public void updateApiCategoryOrganizations(Map<Integer, String> tenantIdsAndOrganizations)
+            throws APIMigrationException {
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(UPDATE_API_CATEGORY_ORGANIZATION)) {
+                for (Map.Entry<Integer, String> tenantIdAndOrganization : tenantIdsAndOrganizations.entrySet()) {
+                    ps.setString(1, tenantIdAndOrganization.getValue());
+                    ps.setInt(2, tenantIdAndOrganization.getKey());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException(
+                    "Error while updating organizations for API Categories in the database " + e);
+        }
+    }
+
+    /**
+     * Sets organizations in the AM_API table
+     *
+     * @throws APIMigrationException
+     */
+    public void updateApiOrganizations() throws APIMigrationException {
+        List<String> apiProviders = new ArrayList<>();
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(GET_DISTINCT_API_PROVIDERS)) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        apiProviders.add(rs.getString("API_PROVIDER"));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("Error while getting API providers from the database " + e);
+        }
+
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(UPDATE_API_ORGANIZATION)) {
+                for (String apiProvider : apiProviders) {
+                    String organization = MultitenantUtils.getTenantDomain(APIUtil.replaceEmailDomainBack(apiProvider));
+                    ps.setString(1, organization);
+                    ps.setString(2, apiProvider);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException(
+                    "Error while updating organizations for APIs in the database " + e);
+        }
+    }
+
+    /**
+     * Gets distinct subscriber IDs and corresponding tenant IDs
+     *
+     * @return Subscriber ID and tenant ID mappings
+     * @throws APIMigrationException
+     */
+    public Map<Integer, Integer> getSubscriberIdsAndTenantIds() throws APIMigrationException {
+        Map<Integer, Integer> subscriberIdsTenantIds = new HashMap<>();
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(GET_DISTINCT_SUBSCRIBER_ID_TENANT_ID)) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        subscriberIdsTenantIds.put(rs.getInt("SUBSCRIBER_ID"), rs.getInt("TENANT_ID"));
+                    }
+                }
+            }
+            return subscriberIdsTenantIds;
+        } catch (SQLException e) {
+            throw new APIMigrationException("Error while getting subscriber IDs and tenant IDs from the database " + e);
+        }
+    }
+
+    /**
+     * Sets organizations in the AM_APPLICATION table
+     *
+     * @param subscriberIdsAndOrganizations Subscriber IDs mapped to corresponding organizations
+     * @throws APIMigrationException
+     */
+    public void updateApplicationOrganizations(Map<Integer, String> subscriberIdsAndOrganizations)
+            throws APIMigrationException {
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(UPDATE_APPLICATION_ORGANIZATION)) {
+                for (Map.Entry<Integer, String> subscriberOrganization : subscriberIdsAndOrganizations.entrySet()) {
+                    ps.setString(1, subscriberOrganization.getValue());
+                    ps.setInt(2, subscriberOrganization.getKey());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException("Error while updating organizations for applications in the database " + e);
         }
     }
 }
