@@ -46,6 +46,7 @@ public class MigrateFrom400 extends MigrationClientBase implements MigrationClie
         populateApiCategoryOrganizations();
         populateApiOrganizations();
         populateApplicationOrganizations();
+        populateSubscriberOrganizations();
     }
 
     private void populateApiCategoryOrganizations() throws APIMigrationException {
@@ -70,6 +71,17 @@ public class MigrateFrom400 extends MigrationClientBase implements MigrationClie
             subscriberOrganizations.put(subscriberIdAndTenantId.getKey(), organization);
         }
         apiMgtDAO.updateApplicationOrganizations(subscriberOrganizations);
+    }
+
+    private void populateSubscriberOrganizations() throws APIMigrationException {
+        Map<String, String> subscriberIdsAndOrganizations = new HashMap<>();
+        Map<String, Integer> userIdsAndTenantIds = apiMgtDAO.getSUserIdsAndTenantIds();
+        for (Map.Entry<String, Integer> userIdsAndTenantId : userIdsAndTenantIds.entrySet()) {
+            String organization = APIUtil.getTenantDomainFromTenantId(userIdsAndTenantId.getValue());
+            subscriberIdsAndOrganizations.put(userIdsAndTenantId.getKey(), organization);
+        }
+        apiMgtDAO.updateSubscribersOrganizations(subscriberIdsAndOrganizations);
+
     }
 
     @Override

@@ -194,6 +194,11 @@ public class APIMgtDAO {
                     "SET AM_API_CATEGORIES.ORGANIZATION = ? " +
                     "WHERE AM_API_CATEGORIES.TENANT_ID = ?";
 
+    private static String UPDATE_AM_SUBSCRIBER_ORGANIZATION =
+            "UPDATE AM_SUBSCRIBER " +
+                    "SET AM_SUBSCRIBER.ORGANIZATION = ? " +
+                    "WHERE AM_SUBSCRIBER.USER_ID = ?";
+
     private static String GET_DISTINCT_API_PROVIDERS = "SELECT DISTINCT API_PROVIDER FROM AM_API";
 
     private static String UPDATE_API_ORGANIZATION =
@@ -206,10 +211,14 @@ public class APIMgtDAO {
                     "FROM AM_APPLICATION INNER JOIN AM_SUBSCRIBER " +
                     "ON AM_APPLICATION.SUBSCRIBER_ID = AM_SUBSCRIBER.SUBSCRIBER_ID";
 
+    private static String GET_SUBSCRIBER_ID_TENANT_ID = "" +
+            "SELECT AM_SUBSCRIBER.USER_ID, AM_SUBSCRIBER.TENANT_ID " +
+            "FROM AM_SUBSCRIBER";
+
     private static String UPDATE_APPLICATION_ORGANIZATION =
             "UPDATE AM_APPLICATION " +
                     "SET AM_APPLICATION.ORGANIZATION = ? " +
-                    "WHERE AM_APPLICATION.SUBSCRIBER_ID = ?";
+                    "WHERE AM_APPLICATION.USER_ID = ?";
 
     private APIMgtDAO() {
 
@@ -1206,6 +1215,28 @@ public class APIMgtDAO {
     }
 
     /**
+     * Gets distinct subscriber IDs and corresponding tenant IDs
+     *
+     * @return User ID and tenant ID mappings
+     * @throws APIMigrationException
+     */
+    public Map<String, Integer> getSUserIdsAndTenantIds() throws APIMigrationException {
+        Map<String, Integer> userIdsTenantIds = new HashMap<>();
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(GET_SUBSCRIBER_ID_TENANT_ID)) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        userIdsTenantIds.put(rs.getString("USER_ID"), rs.getInt("TENANT_ID"));
+                    }
+                }
+            }
+            return userIdsTenantIds;
+        } catch (SQLException e) {
+            throw new APIMigrationException("Error while getting user IDs and tenant IDs from the database " + e);
+        }
+    }
+
+    /**
      * Sets organizations in the AM_APPLICATION table
      *
      * @param subscriberIdsAndOrganizations Subscriber IDs mapped to corresponding organizations
@@ -1228,6 +1259,33 @@ public class APIMgtDAO {
             }
         } catch (SQLException e) {
             throw new APIMigrationException("Error while updating organizations for applications in the database " + e);
+        }
+    }
+
+    /**
+     * Sets organizations in the AM_SUBSCRIBERS table
+     *
+     * @param userIdOrganizations Tenant ID and organization mappings
+     * @throws APIMigrationException
+     */
+    public void updateSubscribersOrganizations(Map<String, String> userIdOrganizations)
+            throws APIMigrationException {
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(UPDATE_AM_SUBSCRIBER_ORGANIZATION)) {
+                for (Map.Entry<String, String> userIdOrganization : userIdOrganizations.entrySet()) {
+                    ps.setString(1, userIdOrganization.getValue());
+                    ps.setString(2, userIdOrganization.getKey());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+            }
+        } catch (SQLException e) {
+            throw new APIMigrationException(
+                    "Error while updating organizations for API Categories in the database " + e);
         }
     }
 }
